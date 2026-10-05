@@ -1,0 +1,38 @@
+name: Build check
+on:
+  push:
+    branches: ["dev/**"]
+permissions:
+  contents: write
+concurrency:
+  group: build-check
+  cancel-in-progress: true
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install, test and build
+        run: |
+          set +e
+          {
+            echo "== install"; npm install --no-audit --no-fund 2>&1; echo "install_exit=$?"
+            echo "== test"; npm test 2>&1; echo "test_exit=$?"
+            echo "== build"; npm run build 2>&1; echo "build_exit=$?"
+            echo "== extras"
+            ls node_modules/tesseract.js/dist 2>&1 | head -40
+            ls node_modules/tesseract.js-core 2>&1 | head -40
+            find node_modules/@tesseract.js-data/eng -maxdepth 3 2>&1 | head -20
+            cat node_modules/tesseract.js/package.json | grep '"version"'
+          } > ci.log
+          mkdir out
+          cp ci.log package-lock.json out/
+          [ -d dist ] && cp -r dist out/dist
+          cd out
+          git init -q -b ci-output
+          git add -A
+          git -c user.name=ci -c user.email=ci@users.noreply.github.com commit -qm "ci ${GITHUB_SHA}"
+          git push -qf "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}" ci-output
