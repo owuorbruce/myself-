@@ -44,7 +44,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { useRegisterSW } from "virtual:pwa-register/react";
-import { ChatGPTPanel, ChatGPTSettings } from "./ChatGPT";
+import { ChatGPTPanel, ChatGPTSettings } from "./ChatGPTUI";
 import NoteEditor from "./Editor";
 import { LearnView, ReviewSession } from "./Learn";
 import { buildLesson, lessonStats } from "./lesson";

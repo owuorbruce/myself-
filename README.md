@@ -256,7 +256,7 @@ The Windows release workflow installs and launches the actual installer output t
 - `electron-builder.config.cjs`: bundled runtime and per-user Windows installer.
 - `run-slate.mjs`: dependency-free localhost launcher for the prebuilt app and ChatGPT helper.
 - `server/chatgpt-auth.mjs`, `server/chatgpt-router.mjs`: local OAuth, credential storage, model catalog and response streaming.
-- `src/ChatGPT.tsx`, `src/chatgpt.ts`: ChatGPT settings, sign-in and answer panel.
+- `src/ChatGPTUI.tsx`, `src/chatgpt.ts`: ChatGPT settings, sign-in and answer panel.
 
 ## Current boundaries
 
