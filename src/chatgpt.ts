@@ -5,6 +5,20 @@ export type ChatGPTSession = {
 };
 export type ChatGPTModel = { id: string; name: string };
 export type ChatMessage = { role: "user" | "assistant"; content: string };
+const MODEL_KEY = "slate-chatgpt-model";
+export const DEFAULT_MODEL_NAME = "luna";
+/** Your last pick if it's still offered, otherwise Luna (the lowest tier), otherwise the first model. */
+export function pickModel(list: ChatGPTModel[], saved = savedModel()): string {
+  if (saved && list.some((m) => m.id === saved)) return saved;
+  const luna = list.find((m) => (m.name + " " + m.id).toLowerCase().includes(DEFAULT_MODEL_NAME));
+  return (luna || list[0])?.id || "";
+}
+export function savedModel(): string {
+  try { return globalThis.localStorage?.getItem(MODEL_KEY) || ""; } catch { return ""; }
+}
+export function rememberModel(id: string) {
+  try { globalThis.localStorage?.setItem(MODEL_KEY, id); } catch { /* storage unavailable */ }
+}
 let requestToken = "";
 export const localChatGPT = () => ["localhost", "127.0.0.1"].includes(location.hostname);
 

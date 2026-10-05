@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { ArrowUp, Check, Copy, ExternalLink, Plus, Square } from "lucide-react";
 import {
   localChatGPT, chatGPTSession, signInChatGPT, signOutChatGPT, selectChatGPTAccount,
-  chatGPTModels, askChatGPT, type ChatGPTSession, type ChatGPTModel, type ChatMessage,
+  chatGPTModels, askChatGPT, pickModel, rememberModel, type ChatGPTSession, type ChatGPTModel, type ChatMessage,
 } from "./chatgpt";
 import { flashcardsFromAnswer } from "./ai-response.mjs";
 
@@ -134,7 +134,7 @@ export function ChatGPTPanel({ prompt, question, onQuestionChange, action, onSav
     setComplete(false); setAnswer(""); setMessages([]); setModelError(""); setModels([]); setModel("");
     let stopped = false;
     if (connection.session?.planEnabled) void chatGPTModels().then((list) => {
-      if (!stopped) { setModels(list); setModel(list[0]?.id || ""); if (!list.length) setModelError("No models are available to this ChatGPT account."); }
+      if (!stopped) { setModels(list); setModel(pickModel(list)); if (!list.length) setModelError("No models are available to this ChatGPT account."); }
     }).catch((e) => { if (!stopped) setModelError(e.message || "Couldn't load ChatGPT models."); });
     return () => { stopped = true; };
   }, [connection.session?.active, connection.session?.planEnabled, modelVersion]);
@@ -179,7 +179,7 @@ export function ChatGPTPanel({ prompt, question, onQuestionChange, action, onSav
     </details>
     {connection.session?.planEnabled && <>
       <div className="chat-model-row">
-        <select aria-label="ChatGPT model" value={model} disabled={busy || !models.length} onChange={(e) => setModel(e.target.value)}>
+        <select aria-label="ChatGPT model" value={model} disabled={busy || !models.length} onChange={(e) => { setModel(e.target.value); rememberModel(e.target.value); }}>
           {models.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
         </select>
         <button title="New conversation" aria-label="New conversation" disabled={busy} onClick={() => { setMessages([]); setAnswer(""); setComplete(false); setFollowup(""); onQuestionChange(""); setError(""); setNotice(""); }}><Plus size={17} /></button>

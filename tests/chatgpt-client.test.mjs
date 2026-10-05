@@ -45,3 +45,11 @@ test('desktop sign-in opens the system-browser bridge without creating a rendere
  globalThis.window={open:()=>{popup=true;},slateDesktop:{openSignIn:async url=>{opened=url;}}};
  await client.signInChatGPT();assert.equal(popup,false);assert.equal(opened,'http://localhost:4173/api/chatgpt/authorize?ticket=one');
 });
+test('model picker defaults to Luna, keeps a remembered choice, and falls back to the first model',()=>{
+ const list=[{id:'astra',name:'Astra'},{id:'work-luna',name:'Luna'},{id:'nova',name:'Nova'}];
+ assert.equal(client.pickModel(list,''),'work-luna');
+ assert.equal(client.pickModel(list,'nova'),'nova');
+ assert.equal(client.pickModel(list,'retired'),'work-luna');
+ assert.equal(client.pickModel([{id:'astra',name:'Astra'}],''),'astra');
+ assert.equal(client.pickModel([],''),'');
+});
