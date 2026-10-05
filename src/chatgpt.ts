@@ -29,15 +29,17 @@ export async function chatGPTSession(): Promise<ChatGPTSession> {
 }
 export async function signInChatGPT(options: { newAccount?: boolean; enablePlan?: boolean } = {}) {
   // Open a window during the click, before awaiting, to avoid popup blocking.
-  const popup = window.open("about:blank", "_blank");
-  if (!popup) throw new Error("Your browser blocked the sign-in tab. Allow popups for local Slate and try again.");
-  popup.opener = null;
+  const desktop = window.slateDesktop;
+  const popup = desktop ? null : window.open("about:blank", "_blank");
+  if (!desktop && !popup) throw new Error("Your browser blocked the sign-in tab. Allow popups for local Slate and try again.");
+  if (popup) popup.opener = null;
   try {
     await chatGPTSession();
     const res = await request("sign-in", options); const data = await res.json();
     const url = new URL(data.url, location.origin);
     if (url.origin !== location.origin || url.pathname !== "/api/chatgpt/authorize") throw new Error("Invalid sign-in link.");
-    popup.location.href = url.href;
+    if (desktop) await desktop.openSignIn(url.href);
+    else if (popup) popup.location.href = url.href;
   } catch (error) { popup?.close(); throw error; }
 }
 export async function signOutChatGPT(): Promise<ChatGPTSession> {

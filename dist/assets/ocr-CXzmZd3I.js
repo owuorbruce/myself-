@@ -1,0 +1,6 @@
+const __vite__mapDeps=(i,m=__vite__mapDeps,d=(m.f||(m.f=["./index-B6FS3VBq.js","./index-D1inah1I.js","./index-BG6Qf5yT.css"])))=>i.map(i=>d[i]);
+import{_ as u}from"./index-D1inah1I.js";let n=null;function c(){return new URL("ocr/",new URL("./",location.href)).href}async function l(t){return n||(n=(async()=>{const{createWorker:e,OEM:a}=await u(async()=>{const{createWorker:r,OEM:i}=await import("./index-B6FS3VBq.js").then(o=>o.i);return{createWorker:r,OEM:i}},__vite__mapDeps([0,1,2]),import.meta.url);return e("eng",a.LSTM_ONLY,{workerPath:c()+"worker.min.js",corePath:c(),langPath:c(),gzip:!0,workerBlobURL:!1,logger:r=>{r.status==="recognizing text"&&t?.(r.progress)}})})().catch(e=>{throw n=null,e})),n}async function g(t,e){const a=await l(e),{data:r}=await a.recognize(t);return r.text.replace(/[ \t]+\n/g,`
+`).trim()}async function f(t,e,a=40){const{renderPages:r}=await u(async()=>{const{renderPages:o}=await import("./pdf-DxPfgXyu.js");return{renderPages:o}},[],import.meta.url),i=[];return await r(t,async(o,s,w)=>{e?.(s,w),i.push(`[Page ${s}]
+`+await g(o))},a),i.join(`
+
+`)}async function m(){const t=n;n=null,t&&await(await t).terminate()}export{g as recognize,f as recognizePdf,m as stopOcr};

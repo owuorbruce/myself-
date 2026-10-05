@@ -163,6 +163,7 @@ function checkAt(content: JSONContent, path: number[], done: boolean) {
 export default function App() {
   const [data, setData] = useState<Workspace | null>(null);
   const [view, setView] = useState<View>("home");
+  const [desktopWelcome, setDesktopWelcome] = useState(() => !!window.slateDesktop && localStorage.getItem("slate-desktop-welcome") !== "done");
   const [pageId, setPageId] = useState("");
   const [tabs, setTabs] = useState<string[]>([]);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
@@ -379,6 +380,11 @@ export default function App() {
   }
   useEffect(() => {
     let active = true;
+    const stopClosing = window.slateDesktop?.onBeforeClose(async () => {
+      if (restoring.current) return false;
+      try { await flush(); return !pending.current && !errorRef.current; }
+      catch { return false; }
+    });
     load()
       .then(async (result) => {
         if (!active) return;
@@ -435,6 +441,7 @@ export default function App() {
       );
     return () => {
       active = false;
+      stopClosing?.();
       document.removeEventListener("visibilitychange", hidden);
       clearInterval(periodic);
       media?.removeEventListener?.("change", scheme);
@@ -531,11 +538,14 @@ export default function App() {
       }
     };
     const open = (e: Event) => openPage((e as CustomEvent).detail);
+    const settings = () => navigate("settings");
     window.addEventListener("keydown", handler);
     window.addEventListener("slate-open-page", open);
+    window.addEventListener("slate-open-settings", settings);
     return () => {
       window.removeEventListener("keydown", handler);
       window.removeEventListener("slate-open-page", open);
+      window.removeEventListener("slate-open-settings", settings);
     };
   }, [pageId, view, preview]);
   const page = data?.pages.find((p) => p.id === pageId && !p.trashed);
@@ -1409,6 +1419,13 @@ export default function App() {
             </button>
           </div>
         </header>
+        {desktopWelcome && (
+          <div className="desktop-welcome" role="status">
+            <div><strong>Welcome to Slate for Windows</strong><p>Bring your browser notes with you: export a workspace backup in the browser, then restore it here in Settings &amp; backups.</p></div>
+            <button onClick={() => navigate("settings")}>Open backups</button>
+            <button aria-label="Dismiss desktop welcome" onClick={() => { localStorage.setItem("slate-desktop-welcome", "done"); setDesktopWelcome(false); }}><X size={16} /></button>
+          </div>
+        )}
         {error && (
           <div className="error-banner" role="alert">
             {error} <button onClick={backup}>Export current work</button>

@@ -10,9 +10,26 @@ An offline personal workspace for notes, coursework, projects, tasks, and study 
 
 Open the hosted app: https://owuorbruce.github.io/myself-/
 
+### Windows desktop app
+
+[Download Slate-Setup.exe](https://github.com/owuorbruce/myself-/releases/latest/download/Slate-Setup.exe).
+
+1. Export a workspace backup from your browser copy if you want to keep those notes.
+2. Close any old Slate command/launcher window.
+3. Run **Slate-Setup.exe**, then open **Slate** from your desktop or Start menu.
+4. Restore your backup in **Settings & backups**. The first-run banner explains this move.
+
+The installer includes its own runtime. Node.js, a command window and a browser address are not required. Notes stay in the app's own local profile; they are separate from Chrome/Edge website storage. Your saved local ChatGPT connection can be reused because credentials remain in the existing protected user directory. ChatGPT sign-in opens your normal browser and replies appear back in Slate.
+
+Closing the window saves pending workspace edits first. If saving fails, Slate asks you to return and export your work or explicitly close anyway. App updates preserve the workspace profile and refresh only application caches. Uninstalling does not intentionally delete your notes, but keep regular backups.
+
+The current installer is unsigned. Use **Help → Download updates** for later releases. Windows x64 is the packaged target; other platforms can use the browser/source launcher below.
+
+### Browser/source archive
+
 The ZIP includes the source and a ready-built `dist/` folder. Unzip the entire folder first.
 
-### Run locally on Windows or Linux
+### Run the source archive on Windows, Linux or macOS
 
 1. Install **Node.js 22.13 or newer** if it is not already installed: https://nodejs.org/
 2. On Windows, double-click **start-slate.cmd**. On Linux, run `sh start-slate.sh` from the Slate folder. On macOS, run `node run-slate.mjs`.
@@ -118,13 +135,13 @@ The text reader (about 11 MB) downloads the first time it's used, then works off
 The local launcher supports OpenAI's [Sign in with ChatGPT for open-source apps](https://developers.openai.com/siwc/token-sharing-open-source). Eligible ChatGPT Plus or Pro accounts can share their plan allowance or available credits with Slate. This preview depends on account eligibility, permissions and usage limits. Slate does not fall back to separately billed API usage.
 
 1. If you use the hosted website, export your workspace in **Settings & backups** first.
-2. [Download the latest Slate ZIP](https://github.com/owuorbruce/myself-/archive/refs/heads/main.zip), unzip it and run the local launcher described above. Node.js 22.13 or newer is required; no `npm install` is needed.
-3. Open **http://localhost:4173/** and restore your exported workspace if you are moving from the hosted version.
+2. [Download Slate for Windows](https://github.com/owuorbruce/myself-/releases/latest/download/Slate-Setup.exe), run the installer and open **Slate**. The source archive launcher remains available on other platforms.
+3. Restore your exported workspace in **Settings & backups** if you are moving from the hosted or browser version.
 4. In **Settings & backups → ChatGPT in Slate**, or a note's **Ask ChatGPT** panel, choose **Continue with ChatGPT**. Sign in in your browser and allow Slate to use your ChatGPT plan.
 5. Return to Slate, choose an available model, select your notes or highlighted text, choose an action and press **Ask ChatGPT**.
 6. Read replies inside Slate, ask follow-up questions, copy the answer, save it as a new child note, or add generated flashcards after validation. Partial and failed replies cannot be saved through these controls.
 
-Keep the launcher open. AI replies need an internet connection; your normal note-taking features still work offline. The hosted GitHub Pages version provides these local setup steps and the existing **Use copy and paste instead** workflow. It cannot run the local sign-in helper itself.
+Keep Slate open. If using the source archive, keep its launcher open. AI replies need an internet connection; your normal note-taking features still work offline. The hosted GitHub Pages version provides these local setup steps and the existing **Use copy and paste instead** workflow. It cannot run the local sign-in helper itself.
 
 Only pressing **Ask ChatGPT** or **Send follow-up** sends the selected prompt/history to OpenAI. Replies stay in the current panel until you choose to save them. Slate does not import your ChatGPT conversations or personal memory. Changing accounts clears the current answer and conversation.
 
@@ -206,6 +223,16 @@ node run-slate.mjs
 
 Set `VITE_BASE_PATH=/your-repository/` while building if you serve a prebuilt copy at a subdirectory. The provided GitHub workflow sets this automatically. For local use, the default `./` base works.
 
+For desktop development and Windows packaging:
+
+```bash
+npm run build
+npm run desktop
+npm run package:windows
+```
+
+The Windows release workflow installs and launches the actual installer output twice to check save-on-close and persisted notes before publishing the download. Build dependencies are pinned; they are not needed by the installed app.
+
 ### Structure
 
 - `src/App.tsx`: workspace UI, page navigation, tasks, study, backups, save queue.
@@ -224,13 +251,16 @@ Set `VITE_BASE_PATH=/your-repository/` while building if you serve a prebuilt co
 - `src/pdf.ts`: lazy-loaded local PDF text extraction.
 - `vite.config.ts`: app build, manifest, full offline caching.
 - `.github/workflows/pages.yml`: GitHub Pages deployment.
+- `.github/workflows/desktop.yml`: Windows build, installed-app checks and verified release download.
+- `desktop/`: Electron main process, restricted preload bridge, sign-in handoff and package checks.
+- `electron-builder.config.cjs`: bundled runtime and per-user Windows installer.
 - `run-slate.mjs`: dependency-free localhost launcher for the prebuilt app and ChatGPT helper.
 - `server/chatgpt-auth.mjs`, `server/chatgpt-router.mjs`: local OAuth, credential storage, model catalog and response streaming.
 - `src/ChatGPT.tsx`, `src/chatgpt.ts`: ChatGPT settings, sign-in and answer panel.
 
 ## Current boundaries
 
-This version is a personal workspace. It has no real-time collaboration, native Windows/Linux installer, encrypted storage, collection formulas/relations, handwriting recognition, semantic/vector search, or unattended AI execution. Its installable app is a PWA. Sync needs a GitHub account and a private repository.
+This version is a personal workspace. It has no real-time collaboration, a packaged Linux/macOS installer, encrypted storage, collection formulas/relations, handwriting recognition, semantic/vector search, or unattended AI execution. Windows has a desktop installer; the browser version can also be installed as a PWA. Sync needs a GitHub account and a private repository.
 
 Calendar is a date-grouped agenda view. Reviews use an SM-2 style spaced repetition schedule rather than a full Anki/FSRS engine. Teach me builds questions from your own notes; it doesn't write explanations of its own. Markdown import covers headings, basic formatting, lists, checklists, quotes, links, and fenced code; more elaborate Markdown constructs are kept as text. Imported remote images are not fetched automatically.
 

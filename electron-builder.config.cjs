@@ -1,0 +1,17 @@
+module.exports = {
+  appId: 'com.owuorbruce.slate', productName: 'Slate',
+  directories: { app: 'desktop', output: 'release' },
+  asar: true,
+  files: [ 'main.mjs', 'preload.cjs', 'security.mjs', 'smoke.mjs', 'package.json',
+    { from: '../dist', to: 'dist', filter: ['**/*'] },
+    { from: '../server', to: 'server', filter: ['*.mjs'] },
+    { from: '../LICENSE', to: 'LICENSE' },
+  ],
+  win: { target: [{ target: 'nsis', arch: ['x64'] }], icon: 'public/icon-512.png', executableName: 'Slate', signAndEditExecutable: true },
+  nsis: { artifactName: 'Slate-Setup.exe', oneClick: true, perMachine: false, allowElevation: false,
+    createDesktopShortcut: 'always', createStartMenuShortcut: true, shortcutName: 'Slate',
+    runAfterFinish: false, deleteAppDataOnUninstall: false,
+  },
+  afterPack: './desktop/after-pack.mjs',
+  publish: null,
+};

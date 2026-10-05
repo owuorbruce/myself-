@@ -3524,3 +3524,8 @@ kbd {
 .chatgpt-spinner { animation: chatgpt-spin 1s linear infinite; }
 @keyframes chatgpt-spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .chatgpt-spinner { animation: none; } }
+
+.desktop-welcome { margin: 16px 24px 0; display: flex; align-items: center; gap: 14px; padding: 14px 16px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
+.desktop-welcome > div { flex: 1; }
+.desktop-welcome p { margin: 5px 0 0; font-size: 13px; color: var(--muted); }
+@media (max-width: 760px) { .desktop-welcome { margin: 12px; flex-wrap: wrap; } }

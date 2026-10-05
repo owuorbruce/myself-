@@ -9,3 +9,6 @@ qa/
 .slate/
 accounts.json
 accounts.json.*.tmp
+
+release/
+desktop-smoke/

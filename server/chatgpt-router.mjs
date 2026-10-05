@@ -46,7 +46,7 @@ export function createChatGPTRouter({ runtime = new ChatGPTRuntime() } = {}) {
   const requestToken = randomBytes(32).toString("base64url");
   const running = new Set();
   const abortAll = () => { for (const controller of running) controller.abort(); };
-  return async function route(req, res) {
+  const route = async function route(req, res) {
     const url = new URL(req.url, "http://localhost");
     if (!url.pathname.startsWith("/api/chatgpt/") && url.pathname !== "/auth/callback") return false;
     // Reject DNS rebinding and cross-origin websites, including other local ports.
@@ -110,4 +110,6 @@ export function createChatGPTRouter({ runtime = new ChatGPTRuntime() } = {}) {
     }
     return true;
   };
+  route.close = abortAll;
+  return route;
 }

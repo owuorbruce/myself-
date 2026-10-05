@@ -40,3 +40,8 @@ test('client treats EOF without completion as an error and requires actual plan 
 test('offline navigation never intercepts sign-in authorization or callback',async()=>{
  const serviceworker=await readFile(new URL('../dist/sw.js',import.meta.url),'utf8');assert.match(serviceworker,/denylist/);assert.match(serviceworker,/\\\/api\\\//);assert.match(serviceworker,/\\\/auth\\\//);
 });
+test('desktop sign-in opens the system-browser bridge without creating a renderer popup',async(t)=>{
+ let popup=false,opened='';mock(t,async(url)=>Response.json(url.href.endsWith('/session')?session:{url:'/api/chatgpt/authorize?ticket=one'}));
+ globalThis.window={open:()=>{popup=true;},slateDesktop:{openSignIn:async url=>{opened=url;}}};
+ await client.signInChatGPT();assert.equal(popup,false);assert.equal(opened,'http://localhost:4173/api/chatgpt/authorize?ticket=one');
+});

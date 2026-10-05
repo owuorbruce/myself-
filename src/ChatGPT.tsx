@@ -6,7 +6,7 @@ import {
 } from "./chatgpt";
 import { flashcardsFromAnswer } from "./ai-response.mjs";
 
-const DOWNLOAD = "https://github.com/owuorbruce/myself-/archive/refs/heads/main.zip";
+const DOWNLOAD = "https://github.com/owuorbruce/myself-/releases/latest/download/Slate-Setup.exe";
 const USAGE = "https://chatgpt.com/";
 function changed() { window.dispatchEvent(new Event("slate-chatgpt")); }
 function useConnection() {
@@ -44,15 +44,15 @@ function useConnection() {
 
 function LocalSetup({ onExport }: { onExport?: () => void }) {
   return <div className="chatgpt-local-setup">
-    <p>Use your ChatGPT plan inside the local version of Slate.</p>
+    <p>Use your ChatGPT plan in the Slate desktop app.</p>
     <ol>
       <li>Export your workspace here if you want to bring these notes with you.</li>
-      <li><a href={DOWNLOAD}>Download Slate</a> and unzip the folder.</li>
-      <li>Run <b>start-slate.cmd</b> on Windows, <b>start-slate.sh</b> on Linux, or <b>node run-slate.mjs</b> on macOS. Node.js 22.13 or newer is required.</li>
-      <li>At <b>http://localhost:4173/</b>, restore your backup and choose <b>Continue with ChatGPT</b>.</li>
+      <li><a href={DOWNLOAD}>Download Slate for Windows</a> and run the installer.</li>
+      <li>Open <b>Slate</b> from your desktop or Start menu.</li>
+      <li>Restore your backup in <b>Settings &amp; backups</b>, then choose <b>Continue with ChatGPT</b>.</li>
     </ol>
     {onExport && <button onClick={onExport}>Export your workspace</button>}
-    <p className="small">Keep the launcher window open while using ChatGPT. Sign-in uses your browser; eligible requests use your plan allowance or available credits.</p>
+    <p className="small">Keep Slate open while using ChatGPT. Sign-in uses your browser; eligible requests use your plan allowance or available credits.</p>
   </div>;
 }
 

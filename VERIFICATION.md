@@ -1,3 +1,15 @@
+# Windows desktop verification
+
+The desktop change passes **73 Node tests** and a production build locally. The seven added checks cover local-page trust, executable URL blocking, protected sign-in ticket routing, the narrow preload bridge, save failures, bundled static files and cancellation when the service closes. Existing ChatGPT, import and reliability checks continue to pass.
+
+The Windows release workflow builds a self-contained x64 installer, installs it on a Windows runner, verifies the installed executable against the packaged build, then launches that installed app with an isolated test profile. It checks the actual UI and local helper, verifies that Node is unavailable to the renderer, creates a note immediately before closing, reopens the app and checks the note, and opens settings to exercise the ChatGPT button through its validated desktop browser handoff. The handoff is intercepted in smoke mode so no external browser or real account is used. Publication occurs only after these checks pass.
+
+Desktop production settings include renderer sandboxing and context isolation, a restrictive CSP, blocked remote navigation/webviews, main-frame IPC validation and Electron fuses that disable RunAsNode, NODE_OPTIONS and Node inspect arguments. Only a local one-use sign-in ticket crosses the preload bridge; OpenAI credentials stay in the helper.
+
+Browser and desktop workspaces use separate profiles. Backups move notes between them. The existing default credential directory allows the desktop app to reuse the browser launcher's saved ChatGPT registration once that launcher is closed. No real user credentials are used by the Windows checks.
+
+The installer is unsigned. Only Windows x64 is packaged. This Linux workspace cannot directly run a Windows executable; installed-app verification runs in GitHub Actions. A live AI reply remains an account check on the user's computer.
+
 # ChatGPT integration verification
 
 The combined suite passes **66 Node tests** (`npm test`), including the existing 43 project tests and 23 new ChatGPT tests. The production build passes TypeScript checks and generates the offline service worker.
