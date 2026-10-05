@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { EditorContent, useEditor } from "@tiptap/react";
 import Placeholder from "@tiptap/extension-placeholder";
+import { NodeSelection } from "@tiptap/pm/state";
 import {
   Bold,
   Italic,
@@ -154,8 +155,16 @@ export default function NoteEditor({
   useEffect(() => {
     const handle = (e: Event) => {
       const detail = (e as CustomEvent).detail;
-      if (editor && detail.pageId === page.id)
-        editor.chain().focus().insertContent(detail.content).run();
+      if (!editor || detail.pageId !== page.id) return;
+      const selection = editor.state.selection;
+      // Never replace a selected block (like a labelled image): insert after it.
+      if (selection instanceof NodeSelection)
+        editor
+          .chain()
+          .focus()
+          .insertContentAt(selection.to, detail.content)
+          .run();
+      else editor.chain().focus().insertContent(detail.content).run();
     };
     window.addEventListener("slate-insert", handle);
     return () => window.removeEventListener("slate-insert", handle);
@@ -176,8 +185,20 @@ export default function NoteEditor({
       .toLowerCase()
       .includes(slash?.query.toLowerCase() || ""),
   );
+  /** If a whole block is selected, move to a new line after it first. */
+  function leaveSelectedBlock() {
+    if (!editor) return;
+    const selection = editor.state.selection;
+    if (selection instanceof NodeSelection && selection.node.isBlock)
+      editor
+        .chain()
+        .insertContentAt(selection.to, { type: "paragraph" })
+        .setTextSelection(selection.to + 1)
+        .run();
+  }
   function command(type: string) {
     if (!editor) return;
+    if (!slash) leaveSelectedBlock();
     if (type === "label") {
       if (slash)
         editor
@@ -330,7 +351,8 @@ export default function NoteEditor({
             return;
           }
           const reader = new FileReader();
-          reader.onload = () =>
+          reader.onload = () => {
+            leaveSelectedBlock();
             editor
               .chain()
               .focus()
@@ -339,6 +361,7 @@ export default function NoteEditor({
                 attrs: { id: uid(), src: reader.result, boxes: [] },
               })
               .run();
+          };
           reader.readAsDataURL(file);
         }}
       />
