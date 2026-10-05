@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { ArrowUp, Check, Copy, ExternalLink, LoaderCircle, Plus, Square } from "lucide-react";
+import { ArrowUp, Check, Copy, ExternalLink, Plus, Square } from "lucide-react";
 import {
   localChatGPT, chatGPTSession, signInChatGPT, signOutChatGPT, selectChatGPTAccount,
   chatGPTModels, askChatGPT, type ChatGPTSession, type ChatGPTModel, type ChatMessage,
@@ -104,8 +104,8 @@ export function ChatGPTSettings({ onExport }: { onExport: () => void }) {
   </div>;
 }
 
-export function ChatGPTPanel({ prompt, action, onSave, onCards, onExport }: {
-  prompt: string; action: string; onSave: (text: string) => void;
+export function ChatGPTPanel({ prompt, question, onQuestionChange, action, onSave, onCards, onExport }: {
+  prompt: string; question: string; onQuestionChange: (value: string) => void; action: string; onSave: (text: string) => void;
   onCards: (cards: { question: string; answer: string }[]) => void; onExport: () => void;
 }) {
   const connection = useConnection();
@@ -121,6 +121,10 @@ export function ChatGPTPanel({ prompt, action, onSave, onCards, onExport }: {
   const [resultAction, setResultAction] = useState("");
   const [notice, setNotice] = useState("");
   const [modelVersion, setModelVersion] = useState(0);
+  const conversation = useRef<HTMLDivElement | null>(null);
+  const [pendingQuestion, setPendingQuestion] = useState("");
+  const [initialQuestion, setInitialQuestion] = useState("");
+  useEffect(() => { const el = conversation.current; if (el) el.scrollTop = el.scrollHeight; }, [answer, messages, busy]);
   const controller = useRef<AbortController | null>(null);
   const active = useRef(true);
   const generation = useRef(0);
@@ -142,6 +146,8 @@ export function ChatGPTPanel({ prompt, action, onSave, onCards, onExport }: {
     if (follow && !followup.trim()) return;
     const turn = ++generation.current;
     const aborter = new AbortController(); controller.current = aborter;
+    if (!follow) setInitialQuestion(question.trim() || `${action} this note`);
+    setPendingQuestion(follow ? followup.trim() : question.trim() || `${action} this note`);
     setBusy(true); setAnswer(""); setComplete(false); setError(""); setNotice("");
     const requestedAction = follow ? resultAction : action;
     try {
@@ -164,38 +170,42 @@ export function ChatGPTPanel({ prompt, action, onSave, onCards, onExport }: {
     try { const cards = flashcardsFromAnswer(answer); onCards(cards); setNotice(`${cards.length} flashcards added`); }
     catch (e) { setError(e instanceof Error ? e.message : "Couldn't read the flashcards."); }
   };
+  const hasConversation = messages.length > 0;
+  const draft = hasConversation ? followup : question;
   return <div className="chatgpt-panel">
-    <ConnectionControls connection={connection} onExport={onExport} />
+    <details className="chat-account-settings" open={!connection.session?.planEnabled}>
+      <summary>{connection.session?.planEnabled ? "ChatGPT connected · account settings" : "Connect ChatGPT"}</summary>
+      <ConnectionControls connection={connection} onExport={onExport} />
+    </details>
     {connection.session?.planEnabled && <>
-      <label>ChatGPT model
+      <div className="chat-model-row">
         <select aria-label="ChatGPT model" value={model} disabled={busy || !models.length} onChange={(e) => setModel(e.target.value)}>
           {models.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
         </select>
-      </label>
-      {modelError && <><p className="chatgpt-error" role="alert">{modelError}</p><button onClick={() => setModelVersion((v) => v + 1)}>Reload models</button></>}
-      <p className="small">Pressing Ask ChatGPT sends the selected notes and question to OpenAI using your ChatGPT plan.</p>
-      <button className="primary" disabled={busy || !model} onClick={() => void send()}>
-        {busy ? <LoaderCircle size={16} className="chatgpt-spinner" /> : <ArrowUp size={16} />}
-        {busy ? "ChatGPT is answering…" : "Ask ChatGPT"}
-      </button>
-      {busy && <button onClick={() => controller.current?.abort()}><Square size={14} /> Stop</button>}
-      {(answer || error) && <div className="chatgpt-answer" aria-busy={busy}>
-        <h4>{complete ? "ChatGPT answer" : busy ? "Writing…" : "Answer incomplete"}</h4>
-        {answer && <div className="chatgpt-answer-text" tabIndex={0}>{answer}</div>}
+        <button title="New conversation" aria-label="New conversation" disabled={busy} onClick={() => { setMessages([]); setAnswer(""); setComplete(false); setFollowup(""); onQuestionChange(""); setError(""); setNotice(""); }}><Plus size={17} /></button>
+      </div>
+      {modelError && <><p className="chatgpt-error" role="alert">{modelError}</p><button onClick={() => setModelVersion(v => v + 1)}>Reload models</button></>}
+      <div className="chat-conversation" ref={conversation} role="log" aria-label="ChatGPT conversation">
+        {!hasConversation && !busy && !answer && <div className="chat-empty"><h3>Think it through with ChatGPT</h3><p>Ask a question, untangle an idea, or turn your notes into a study guide.</p><div className="chat-suggestions">{["Summarize the key ideas", "Explain this in simple terms", "Quiz me on this note"].map(text => <button key={text} onClick={() => onQuestionChange(text)}>{text}</button>)}</div></div>}
+        {messages.map((message, i) => <div key={i} className={"chat-message " + message.role}><span className="chat-speaker">{message.role === "user" ? "You" : "ChatGPT"}</span><div>{i === 0 ? <>{initialQuestion}<details><summary>View sent note context</summary>{message.content}</details></> : message.content}</div></div>)}
+        {!complete && (busy || answer || error) && <><div className="chat-message user"><span className="chat-speaker">You</span><div>{pendingQuestion}</div></div><div className="chat-message assistant" aria-busy={busy}><span className="chat-speaker">ChatGPT</span><div>{answer || (busy ? "Thinking…" : "Request incomplete")}</div></div></>}
         {error && <p className="chatgpt-error" role="alert">{error}</p>}
-        {complete && <>
-          <div className="chatgpt-actions">
-            <button onClick={() => { onSave(answer); setNotice("Answer saved as a new note"); }}><Plus size={14} /> Save as new note</button>
-            <button onClick={() => void copy()}><Copy size={14} /> Copy answer</button>
-            {resultAction === "Flashcards" && <button onClick={addCards}>Add these flashcards</button>}
-          </div>
-          <form onSubmit={(e) => { e.preventDefault(); void send(true); }} className="chatgpt-followup">
-            <label>Follow-up question<textarea aria-label="Follow-up question" rows={2} value={followup} onChange={(e) => setFollowup(e.target.value)} disabled={busy} /></label>
-            <button type="submit" disabled={busy || !followup.trim()}>Send follow-up</button>
-          </form>
-        </>}
+        {complete && <div className="chatgpt-actions">
+          <button onClick={() => { onSave(answer); setNotice("Answer saved as a new note"); }}><Plus size={14} /> Save as new note</button>
+          <button onClick={() => void copy()}><Copy size={14} /> Copy</button>
+          {resultAction === "Flashcards" && <button onClick={addCards}>Add these flashcards</button>}
+        </div>}
         {notice && <p role="status" className="small">{notice}</p>}
-      </div>}
+      </div>
+      <form className="chat-composer" onSubmit={(e) => { e.preventDefault(); void send(hasConversation); }}>
+        <textarea aria-label="Message ChatGPT" placeholder="Ask anything about your notes…" rows={3} value={draft} disabled={busy}
+          onChange={(e) => hasConversation ? setFollowup(e.target.value) : onQuestionChange(e.target.value)}
+          onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); if (!busy && model && (!hasConversation || draft.trim())) void send(hasConversation); } }} />
+        <div className="chat-composer-footer"><span>{hasConversation ? "Follow-up" : action + " · selected notes"}</span>
+          {busy ? <button type="button" aria-label="Stop response" onClick={() => controller.current?.abort()}><Square size={16} /></button> : <button className="primary" type="submit" aria-label="Send message" disabled={!model || (hasConversation && !draft.trim())}><ArrowUp size={18} /></button>}
+        </div>
+      </form>
+      <p className="chat-privacy">Selected notes are sent to OpenAI when you send a message.</p>
     </>}
   </div>;
 }

@@ -3529,3 +3529,48 @@ kbd {
 .desktop-welcome > div { flex: 1; }
 .desktop-welcome p { margin: 5px 0 0; font-size: 13px; color: var(--muted); }
 @media (max-width: 760px) { .desktop-welcome { margin: 12px; flex-wrap: wrap; } }
+
+/* Collapsible navigation and a full-height conversation beside the note. */
+.nav-collapse { align-self: flex-end; margin: -14px -4px 4px 0; color: var(--muted); }
+.nav-expand { flex-shrink: 0; }
+@media (min-width: 721px) {
+  .nav-collapsed .sidebar { display: none; }
+}
+.page-layout:has(.ai-chat-panel) { max-width: none; }
+.ai-chat-panel.context-panel { position: sticky; top: 65px; height: calc(100dvh - 65px); max-width: 55vw; padding: 20px; display: flex; flex-direction: column; min-height: 0; }
+.ai-chat-panel .panel-heading { margin-bottom: 14px; flex-shrink: 0; }
+.chat-resize { position: absolute; inset: 0 auto 0 -4px; width: 8px; cursor: col-resize; touch-action: none; z-index: 2; }
+.chat-resize:hover, .chat-resize:focus-visible { background: var(--accent, #36745a); opacity: .5; outline: none; }
+.ai-chat-panel .chat-context { border-bottom: 1px solid var(--line); padding-bottom: 12px; margin: 0; flex-shrink: 0; max-height: 35%; overflow: auto; }
+.chat-context summary, .chat-account-settings summary { cursor: pointer; color: var(--muted); font-size: 12px; padding: 4px 0; }
+.chat-context label:first-of-type { margin-top: 12px; }
+.ai-chat-panel .chatgpt-panel { display: flex; flex-direction: column; gap: 10px; margin: 10px 0 0; flex: 1; min-height: 0; overflow: auto; }
+.chat-account-settings { flex-shrink: 0; max-height: 40%; overflow: auto; }
+.chat-model-row { display: flex; gap: 8px; align-items: center; }
+.chat-model-row select { flex: 1; min-width: 0; padding: 8px; font-size: 12px; }
+.chat-conversation { flex: 1; min-height: 100px; overflow: auto; overscroll-behavior: contain; padding: 8px 4px; }
+.chat-empty { padding: 28px 6px; }
+.chat-empty h3 { font-size: 21px; font-weight: 550; letter-spacing: -.5px; }
+.chat-empty p { line-height: 1.7; color: var(--muted); }
+.chat-suggestions { display: grid; gap: 8px; margin-top: 22px; }
+.chat-suggestions button { justify-content: flex-start; text-align: left; border: 1px solid var(--line); border-radius: 9px; padding: 10px 12px; font-size: 12px; }
+.chat-message { margin-bottom: 24px; line-height: 1.7; overflow-wrap: anywhere; white-space: pre-wrap; user-select: text; }
+.chat-message.user { background: var(--sidebar); border: 1px solid var(--line); border-radius: 14px; padding: 12px 15px; margin-left: 22px; }
+.chat-message.assistant { padding: 0 6px; }
+.chat-speaker { display: block; font-size: 11px; color: var(--muted); font-weight: 600; margin-bottom: 5px; }
+.chat-message details summary { cursor: pointer; font-size: 12px; }
+.chat-composer { border: 1px solid var(--line); border-radius: 14px; padding: 10px; background: var(--surface); flex-shrink: 0; box-shadow: 0 3px 12px #00000006; }
+.chat-composer:focus-within { border-color: var(--accent, #36745a); }
+.ai-chat-panel .chat-composer textarea { width: 100%; border: 0; box-shadow: none; outline: none; resize: none; background: transparent; font: inherit; padding: 4px; min-height: 65px; max-height: 140px; }
+.chat-composer-footer { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.chat-composer-footer span { color: var(--muted); font-size: 11px; }
+.chat-composer-footer button { border-radius: 9px; padding: 7px; }
+.ai-chat-panel .chat-privacy { font-size: 10px; color: var(--muted); text-align: center; margin: 0; }
+.ai-chat-panel .chatgpt-manual { flex-shrink: 0; margin: 10px 0 0; padding: 8px 0 0; max-height: 30%; overflow: auto; }
+@media (max-width: 950px) {
+  .ai-chat-panel.context-panel { position: fixed; max-width: calc(100vw - 24px); z-index: 35; }
+}
+@media (max-width: 720px) {
+  .nav-collapse, .nav-expand, .chat-resize { display: none; }
+  .ai-chat-panel.context-panel { top: 56px; height: calc(100dvh - 56px); width: 100vw !important; max-width: 100vw; padding: 16px; }
+}
