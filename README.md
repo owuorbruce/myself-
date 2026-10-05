@@ -1,0 +1,166 @@
+# Slate
+
+An offline personal workspace for notes, coursework, projects, tasks, and study cards.
+
+**No account, server subscription, or AI API key is required.** Notes live on your device. The included ChatGPT workflow uses copy and paste with your existing ChatGPT plan.
+
+![Slate workspace preview](preview.png)
+
+## Start using it
+
+The ZIP includes the source and a ready-built `dist/` folder. Unzip the entire folder first.
+
+### Run locally on Windows or Linux
+
+1. Install **Node.js 22.13 or newer** if it is not already installed: https://nodejs.org/
+2. On Windows, double-click **start-slate.cmd**. On Linux, run `sh start-slate.sh` from the Slate folder. On macOS, run `node run-slate.mjs`.
+3. Your browser opens **http://localhost:4173/**. Keep the launcher window open while you use Slate.
+4. Use the browser menu to install Slate as an app. Chrome and Edge support desktop installation; browser options vary.
+
+The prebuilt copy runs without `npm install` and without an internet connection. After installation and caching, the app also reopens offline. The local launcher binds only to your computer's loopback interface.
+
+Always use the same address, **http://localhost:4173/**, for your local workspace. `127.0.0.1`, another port, another browser, or a GitHub Pages URL uses a different workspace. Export and restore a backup when moving between them.
+
+### Host on your GitHub account
+
+1. Create a GitHub repository, for example **slate**.
+2. Upload the **contents** of this folder into the repository root, including `.github/workflows/pages.yml`, `package.json`, `package-lock.json`, and `src/`.
+3. Use `main` as the default branch. If you use another branch, edit the workflow's branch name.
+4. In the repository, open **Settings → Pages → Build and deployment → Source → GitHub Actions**.
+5. Open **Actions** and run **Deploy Slate to GitHub Pages**, or push a commit to `main`.
+6. Open the URL reported by the deployment. Visit it online once, then install it from your browser.
+
+The workflow detects the GitHub Pages base path, builds Slate, runs the validation tests, and publishes only the app files. It supports project repositories, account Pages repositories, and configured custom domains.
+
+Your notes and attachments are **not committed to GitHub**. They stay in the browser's IndexedDB storage. GitHub distributes the app code. This is a single-user device workspace, with no automatic cloud sync.
+
+GitHub setup documentation: https://docs.github.com/en/pages/getting-started-with-github-pages/configuring-a-publishing-source-for-your-github-pages-site
+
+## What you can do
+
+| Area         | Features                                                                                                                                     |
+| ------------ | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| Writing      | Rich text, headings, bold, italic, underline, highlights, lists, checklists, quotes, callouts, code blocks, tables, images, links, dividers  |
+| Organization | Nested pages, drag pages into other pages, move a page using its location selector, favorites, tags, child pages, inbox capture              |
+| Navigation   | Search and command menu, page tabs, split view with two editors, outline, focus mode, backlinks                                              |
+| Collections  | Editable custom fields: text, number, date, checkbox, select, URL; table, board, calendar agenda, list, gallery; assignment tracker template |
+| Tasks        | Dedicated tasks with due dates, priority, and source pages; aggregated checklists from notes                                                 |
+| Studying     | Exam / definition / decision markers, manually created flashcards, answer reveal, review scheduling, JSON import of generated flashcards     |
+| Files        | Local attachments, image insertion, PDF and image preview, text/PDF attachment search, attachment downloads                                  |
+| Recovery     | Automatic snapshots, manual snapshots, restore history, trash and restore pages, full ZIP backup and restore                                 |
+| Portability  | Markdown export, Markdown/text import, structured JSON backup, attachment files included                                                     |
+| Appearance   | Light, dark, sepia; sans serif or serif editor; wide layout                                                                                  |
+| AI           | Preview/copy a grounded prompt for a page, selected text, or relevant notes; open ChatGPT; paste answers back yourself                       |
+| Offline      | Notes, search, collections, checklists, tasks, flashcards, existing attachments, and backups                                                 |
+
+## A useful first session
+
+- Open **School** and create a child page for a course.
+- Create a **Class notes** page inside it.
+- Type `/exam` on an empty line and choose **Exam marker** to flag a key idea.
+- Open **Study → Marked material** to collect your marked concepts.
+- Create a flashcard from a selection using **Flashcard** in the editor footer.
+- Create a dated task using **Task** in the footer.
+- Open **Collections**, create an assignment tracker, then add rows and choose a table or board view.
+- Export a workspace backup in **Settings & backups**.
+
+Starter pages contain no real assignments or deadlines. Rename or remove them as you wish.
+
+## Ask ChatGPT using Plus
+
+1. Open a note and click **Ask ChatGPT**.
+2. Choose the page, highlighted selection, or relevant workspace notes. For workspace notes, enter a specific question to find matching sources.
+3. Choose an action and inspect **Preview prompt**.
+4. Click **Copy prompt**, then **Open ChatGPT**.
+5. Paste the prompt into ChatGPT and use your existing plan.
+6. Copy a response back into a note. For generated flashcards, ask for the JSON format and use **Import flashcard answers**.
+
+Slate has no automatic ChatGPT login or subscription integration. It does not send notes to an AI service. It does not include an Ollama adapter or separately billed API integration. All AI work happens after you paste into ChatGPT. The normal limits of your ChatGPT plan still apply.
+
+## Offline and storage
+
+Slate uses IndexedDB for workspace records and attachment blobs, and a service worker to cache its complete application bundle. There are no remote fonts, CDNs, tracking scripts, or required servers in the note-taking workflow. Text extraction from digital PDFs also runs locally; scanned images require OCR, which this version does not include.
+
+After the first successful visit, the app shows **Offline ready** when its cache is installed. Test your own browser by turning off the network, closing and reopening Slate, and editing a note.
+
+Browser storage is finite and can be removed by clearing site data or deleting a browser profile. Use **Request persistent storage** and export regular backups. Persistent storage requests are subject to the browser's decision. Backups are ordinary unencrypted ZIP files; store them wherever you keep your private documents.
+
+Only one tab should edit a workspace at a time. Saves check a revision number so a stale tab cannot silently overwrite another tab. If you see a save conflict, export your unsaved work and reload before editing further.
+
+## History and backups
+
+- Changes autosave shortly after you edit; **Ctrl / Cmd + S** flushes immediately.
+- Editing creates a snapshot of the previous version, at most once every five minutes.
+- Each page keeps its most recent 30 snapshots. Use **Save a snapshot now** before a major rewrite.
+- Trash retains pages and children until permanent deletion.
+- A full backup includes active and trashed pages, versions, tasks, cards, collection data, settings, and attachment bytes.
+- Restoring validates structure and references before changing anything, then replaces workspace and files in one IndexedDB transaction.
+- Restore is a **replacement**, rather than a merge. Export your current workspace first if you need to keep it.
+
+Backup layout:
+
+```text
+workspace.json           authoritative structured workspace
+pages/<page-id>.md        portable text copies of pages
+attachments/<file-id>    original attachment bytes
+```
+
+`workspace.json` retains attachment names and types. Internal filenames use stable IDs so duplicate titles and filenames cannot overwrite each other.
+
+## Keyboard shortcuts
+
+| Action              | Shortcut                                        |
+| ------------------- | ----------------------------------------------- |
+| Search and commands | Ctrl / Cmd + K                                  |
+| New page            | Ctrl / Cmd + N                                  |
+| Save immediately    | Ctrl / Cmd + S                                  |
+| Focus mode          | Ctrl / Cmd + Shift + F                          |
+| Insert block        | Type `/` at the beginning of an empty paragraph |
+| Close a dialog      | Escape                                          |
+
+Some browsers reserve new-window shortcuts; the visible New page button is always available.
+
+## Develop or rebuild
+
+```bash
+npm ci
+npm run dev
+```
+
+For a production build:
+
+```bash
+npm test
+npm run build
+node run-slate.mjs
+```
+
+`npm run build` generates an offline-capable app and service worker. Development mode is for source editing; test offline behavior against the production build.
+
+Set `VITE_BASE_PATH=/your-repository/` while building if you serve a prebuilt copy at a subdirectory. The provided GitHub workflow sets this automatically. For local use, the default `./` base works.
+
+### Structure
+
+- `src/App.tsx`: workspace UI, page navigation, tasks, study, backups, save queue.
+- `src/Editor.tsx`: Tiptap editor and slash commands.
+- `src/Collections.tsx`: collection fields and shared views.
+- `src/storage.ts`: IndexedDB storage, revision checks, attachment IO, export/restore.
+- `src/validation.mjs`: backup and hierarchy validation.
+- `src/extensions.ts`: custom callout and page-link nodes.
+- `src/markdown.ts`: Markdown importer.
+- `src/pdf.ts`: lazy-loaded local PDF text extraction.
+- `vite.config.ts`: app build, manifest, full offline caching.
+- `.github/workflows/pages.yml`: GitHub Pages deployment.
+- `run-slate.mjs`: dependency-free localhost launcher for the prebuilt app.
+
+## Current boundaries
+
+This version is a personal workspace. It has no collaboration, automatic cross-device sync, native Windows/Linux installer, encrypted storage, Notion workspace ZIP migration, collection formulas/relations, OCR, semantic/vector search, or automatic AI execution. Its installable app is a PWA.
+
+Calendar is a date-grouped agenda view. Flashcard scheduling uses a simple minute/day interval algorithm rather than a full Anki/FSRS engine. Markdown import covers headings, basic formatting, lists, checklists, quotes, links, and fenced code; more elaborate Markdown constructs are kept as text. Imported remote images are not fetched automatically.
+
+Attachment limit: 25 MB each. Inline image limit: under 5 MB. PDF indexing: up to 300 pages and 1 million text characters; larger PDFs remain attached without full indexing. Backup restore: under 200 MB compressed and total attachment bytes. Structured backup text is limited to 30 MB. These are client-side guardrails, not paid credits.
+
+## License
+
+The project code is released under the MIT License. Dependencies keep their own licenses.
