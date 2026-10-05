@@ -361,7 +361,9 @@ export function LearnView({
         <span
           style={{
             width:
-              (steps.length ? (Math.min(pos, steps.length) / steps.length) * 100 : 0) + "%",
+              (!steps[pos] || !steps.length
+                ? 100
+                : (pos / steps.length) * 100) + "%",
           }}
         />
       </div>

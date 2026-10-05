@@ -1,6 +1,6 @@
 # Slate
 
-An offline personal workspace for notes, coursework, projects, tasks, and study cards.
+An offline personal workspace for notes, coursework, projects, tasks, and study cards, where your notes quiz you back.
 
 **No account, server subscription, or AI API key is required.** Notes live on your device. The included ChatGPT workflow uses copy and paste with your existing ChatGPT plan.
 
@@ -45,13 +45,29 @@ GitHub setup documentation: https://docs.github.com/en/pages/getting-started-wit
 | Navigation   | Search and command menu, page tabs, split view with two editors, outline, focus mode, backlinks                                              |
 | Collections  | Editable custom fields: text, number, date, checkbox, select, URL; table, board, calendar agenda, list, gallery; assignment tracker template |
 | Tasks        | Dedicated tasks with due dates, priority, and source pages; aggregated checklists from notes                                                 |
-| Studying     | Exam / definition / decision markers, manually created flashcards, answer reveal, review scheduling, JSON import of generated flashcards     |
-| Files        | Local attachments, image insertion, PDF and image preview, text/PDF attachment search, attachment downloads                                  |
+| Interactive  | Tap to Learn questions, fill-in-the-blanks, label-the-image diagrams with green / amber / red grading, right inside your notes                |
+| Teach me     | Turns any page into small teach-then-quiz bites with hearts, XP, pop quizzes and retries of what you missed                                  |
+| Studying     | Daily 5-minute review, weak-spot tracking, study streak, spaced repetition for flashcards and quiz blocks, exam / definition markers          |
+| Files        | Local attachments, image insertion, PDF and image preview, text/PDF attachment search, offline OCR for scans and photos                      |
+| Sync         | Optional sync between phone and laptop through a private GitHub repository you own, with conflict copies                                      |
 | Recovery     | Automatic snapshots, manual snapshots, restore history, trash and restore pages, full ZIP backup and restore                                 |
-| Portability  | Markdown export, Markdown/text import, structured JSON backup, attachment files included                                                     |
-| Appearance   | Light, dark, sepia; sans serif or serif editor; wide layout                                                                                  |
+| Portability  | Notion export import, Markdown export and import (tables, `{{blanks}}`), structured JSON backup, attachment files included                   |
+| Appearance   | Match my device, light, dark, sepia (moon button in the top bar); sans serif or serif editor; wide layout                                     |
 | AI           | Preview/copy a grounded prompt for a page, selected text, or relevant notes; open ChatGPT; paste answers back yourself                       |
 | Offline      | Notes, search, collections, checklists, tasks, flashcards, existing attachments, and backups                                                 |
+
+## Learn by doing
+
+Slate is built for people who'd rather tap than read a wall of text.
+
+- **Tap to Learn.** Type `/tap` (or press the 👁 toolbar button). Write a question, then the answer underneath. The answer stays hidden until you tap.
+- **Fill in the blank.** Select a word and press the blank button in the toolbar, or type `/blank`. Type your guess into the gap and press Enter. Green is right, amber is a near miss, red is wrong. Separate accepted answers with `|`, like `osteoclasts|osteoclast`.
+- **Label the image.** Type `/label` and pick a diagram or lab slide. Drag boxes over its labels and type each answer. Press **Done**, then fill in the boxes and press **Check**. **Retry mistakes** clears only the wrong ones.
+- **Teach me.** Press **Teach me** on any page. Slate splits it into sections (by heading) and small bites, quizzes you right after each bite, gives pop quizzes every few sections, and brings back what you miss. Your blanks, Tap to Learn questions, labelled images and **bold key terms** become the questions.
+- **Study → Today.** A short daily review that puts your weak spots first, then anything due. Answer one question a day to keep your streak.
+- **Study → Weak spots.** Everything you've missed, worst first, with a button to practise just those.
+
+Open **School → Interactive notes: example** in a new workspace, or press **Add an example page** in Study, to try it.
 
 ## A useful first session
 
@@ -66,6 +82,31 @@ GitHub setup documentation: https://docs.github.com/en/pages/getting-started-wit
 
 Starter pages contain no real assignments or deadlines. Rename or remove them as you wish.
 
+## Sync between your phone and laptop
+
+Sync is optional and uses a private GitHub repository you own, so there is still no Slate server.
+
+1. Create a **private** repository on GitHub, for example `slate-notes`.
+2. Create a [fine-grained token](https://github.com/settings/personal-access-tokens/new). Under **Repository access** choose **Only select repositories** and pick that repository. Under **Permissions → Contents** choose **Read and write**.
+3. In Slate open **Settings & backups → Sync between your devices**, enter `your-name/slate-notes` and the token, and press **Connect and sync**.
+4. Do the same on your other device. A fresh device takes your synced notes instead of adding a second set of starter pages.
+
+Slate syncs when it opens, about 20 seconds after you edit, every 5 minutes, and when you switch away. The cloud button in the top bar syncs right away and shows the status. If the same page was edited on both devices before syncing, both versions are kept and the other one is named "(from other device)". Permanent deletions sync too.
+
+The token is stored only in that browser's device storage. It is never put in backups or in the synced copy. Slate refuses to sync to a public repository.
+
+## Import from Notion
+
+In Notion, export with **Markdown & CSV** and **Include subpages** (Settings → Workspace → Export, or a page's ⋯ menu → Export). In Slate open **Settings & backups → Import a Notion export (.zip)**.
+
+Pages keep their nesting, images, tables, callouts, checklists and links between pages. Other files become attachments. Databases become Collections, and their row pages are imported as pages. Everything lands under a page called **Imported from Notion**. Files over 25 MB are skipped.
+
+## Read text in scans and photos
+
+When you attach a photo or a scanned PDF, Slate reads the printed text on your device and makes it searchable. Use **Read text** / **Text** on an attachment to see it and **Put this text in the page**. Turn automatic reading off in Settings if you prefer.
+
+The text reader (about 11 MB) downloads the first time it's used, then works offline. **Download text reading for offline use** in Settings fetches it ahead of time. It reads English printed text; handwriting is hit and miss.
+
 ## Ask ChatGPT using Plus
 
 1. Open a note and click **Ask ChatGPT**.
@@ -79,7 +120,9 @@ Slate has no automatic ChatGPT login or subscription integration. It does not se
 
 ## Offline and storage
 
-Slate uses IndexedDB for workspace records and attachment blobs, and a service worker to cache its complete application bundle. There are no remote fonts, CDNs, tracking scripts, or required servers in the note-taking workflow. Text extraction from digital PDFs also runs locally; scanned images require OCR, which this version does not include.
+Slate uses IndexedDB for workspace records and attachment blobs, and a service worker to cache its complete application bundle. There are no remote fonts, CDNs, tracking scripts, or required servers in the note-taking workflow. Text extraction from digital PDFs and OCR of scans and photos also run locally.
+
+Each page, its history, and the extracted text of each attachment are stored as separate records, so typing only rewrites the page you're editing. Workspaces from the first version of Slate are converted automatically the first time the new version opens.
 
 After the first successful visit, the app shows **Offline ready** when its cache is installed. Test your own browser by turning off the network, closing and reopening Slate, and editing a note.
 
@@ -116,6 +159,7 @@ attachments/<file-id>    original attachment bytes
 | Save immediately    | Ctrl / Cmd + S                                  |
 | Focus mode          | Ctrl / Cmd + Shift + F                          |
 | Insert block        | Type `/` at the beginning of an empty paragraph |
+| Check a blank       | Enter                                           |
 | Close a dialog      | Escape                                          |
 
 Some browsers reserve new-window shortcuts; the visible New page button is always available.
@@ -143,8 +187,14 @@ Set `VITE_BASE_PATH=/your-repository/` while building if you serve a prebuilt co
 
 - `src/App.tsx`: workspace UI, page navigation, tasks, study, backups, save queue.
 - `src/Editor.tsx`: Tiptap editor and slash commands.
+- `src/blocks.tsx`: Tap to Learn, fill-in-the-blank and label-the-image editor blocks.
+- `src/Learn.tsx`, `src/lesson.ts`: Teach-me mode and the review session.
+- `src/study.ts`, `src/grading.mjs`: answer grading, spaced repetition, weak spots and streaks.
+- `src/sync.ts`, `src/sync-merge.mjs`: GitHub sync and merging between devices.
+- `src/notion.ts`: Notion export importer.
+- `src/ocr.ts`: offline text recognition (Tesseract), served from `ocr/`.
 - `src/Collections.tsx`: collection fields and shared views.
-- `src/storage.ts`: IndexedDB storage, revision checks, attachment IO, export/restore.
+- `src/storage.ts`: IndexedDB storage split by page, revision checks, attachment IO, export/restore, migration.
 - `src/validation.mjs`: backup and hierarchy validation.
 - `src/extensions.ts`: custom callout and page-link nodes.
 - `src/markdown.ts`: Markdown importer.
@@ -155,9 +205,9 @@ Set `VITE_BASE_PATH=/your-repository/` while building if you serve a prebuilt co
 
 ## Current boundaries
 
-This version is a personal workspace. It has no collaboration, automatic cross-device sync, native Windows/Linux installer, encrypted storage, Notion workspace ZIP migration, collection formulas/relations, OCR, semantic/vector search, or automatic AI execution. Its installable app is a PWA.
+This version is a personal workspace. It has no real-time collaboration, native Windows/Linux installer, encrypted storage, collection formulas/relations, handwriting recognition, semantic/vector search, or automatic AI execution. Its installable app is a PWA. Sync needs a GitHub account and a private repository.
 
-Calendar is a date-grouped agenda view. Flashcard scheduling uses a simple minute/day interval algorithm rather than a full Anki/FSRS engine. Markdown import covers headings, basic formatting, lists, checklists, quotes, links, and fenced code; more elaborate Markdown constructs are kept as text. Imported remote images are not fetched automatically.
+Calendar is a date-grouped agenda view. Reviews use an SM-2 style spaced repetition schedule rather than a full Anki/FSRS engine. Teach me builds questions from your own notes; it doesn't write explanations of its own. Markdown import covers headings, basic formatting, lists, checklists, quotes, links, and fenced code; more elaborate Markdown constructs are kept as text. Imported remote images are not fetched automatically.
 
 Attachment limit: 25 MB each. Inline image limit: under 5 MB. PDF indexing: up to 300 pages and 1 million text characters; larger PDFs remain attached without full indexing. Backup restore: under 200 MB compressed and total attachment bytes. Structured backup text is limited to 30 MB. These are client-side guardrails, not paid credits.
 

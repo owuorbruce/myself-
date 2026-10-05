@@ -1,36 +1,45 @@
 # Verification
 
-The production app passed 26 browser checks and five backup/hierarchy validation tests.
+Version 2 (interactive notes, Teach me, study tracking, split storage, sync, Notion import, OCR) passed 12 Node tests and 58 browser checks.
 
-The browser checks ran in Chromium against the packaged production build. Offline checks disabled the browser network before reopening and editing the app. The repository-path test used a GitHub Pages style `/slate/` build.
+The browser checks ran in Chromium against the packaged production build served by `run-slate.mjs`.
 
-- Workspace opens and initializes device storage
-- Nested page, templates, editor and autosave
-- Create flashcards and page-linked dated tasks
-- Attach a file and index its text
-- Reopening preserves page contents, nesting and favorites
-- Global search finds text inside attachments
-- Tasks retain completion state
-- Flashcard answer and review scheduling
-- Collection table and board share editable data
-- Backup contains valid notes, versions, tasks, cards, collections and attachment bytes
-- Backup restoration replaces workspace atomically
-- Cold reload, writing and persistence work with network disabled
-- Stored attachments open offline
-- Mobile navigation and layout fit a 390-pixel screen
-- No uncaught browser errors
-- Slash commands accept keyboard selection; exam markers appear in Study
-- Stable page links open target pages and create backlinks
-- History restoration recovers earlier content and retains a recovery snapshot
-- PDF text extraction runs locally and is searchable
-- Both split editors save, and flashcards retain the correct source page
-- Trash and restore retain page content and attached files
-- A stale tab cannot silently overwrite newer saved notes
-- Removing attachments also releases stored file bytes
-- GitHub Pages subdirectory build opens
-- Service worker and manifest stay within the repository path
-- Repository-path app cold reloads offline
+## Node tests (`npm test`)
 
-`npm run build`, `npm test`, and JavaScript syntax checking for the launcher passed. No uncaught browser errors occurred in the checked flows.
+- Backup and hierarchy validation, including the new blocks and study data
+- Answer grading: right, near miss, wrong, alternatives and plurals
+- Spaced repetition intervals and streak counting across days
+- Sync merge: newer page wins, both-sides edits keep a copy, deletions stick, orphaned pages are re-parented, inputs aren't modified
+- Edits made while a sync is running are kept
 
-Windows/Linux installer binaries were not produced. The installed app is a browser PWA. Windows and Linux GUI installers and an actual deployment to your GitHub account were not tested or performed.
+## Interactive notes and studying
+
+- Top-bar theme button switches light and dark; "Match my device" follows the system
+- Fill-in-the-blank grades right / close / wrong; Tap to Learn reveals and records "Got it" / "Not yet"
+- Slash menu and toolbar insert Tap to Learn, blanks (from a selection) and labelled images
+- Label the image: drawing boxes, checking, the score, and Retry mistakes clearing only wrong boxes
+- Teach me runs a whole lesson: teach cards, typed and self-graded questions, hearts, retries capped at two, finish screen with weak spots
+- Teach me asks about labelled-image boxes
+- Study shows the streak, today's review and weak spots; weak-spot practice starts
+- Study history and edits survive reloads
+- Inserting a file or text while a block is selected adds it after the block instead of replacing it
+
+## Storage, backups and offline
+
+- A workspace created by the previous version opens in this one with its pages intact and is converted to split storage (version 2, page content no longer in the main record)
+- Markdown export keeps blanks as `{{answer}}` and Tap to Learn as `**Q: …**`
+- Backup ZIP export, permanent delete, and restore bring back pages, blocks and study history
+- After the app is cached: opens offline, Teach me works offline, offline edits are saved
+
+## Files, import and sync
+
+- OCR reads an attached image, the text becomes searchable and can be put into the page
+- Notion export (nested ZIP with a wrapper folder): pages and nesting, inline image, table, callout, page links, `{{blank}}`, attached file, database to Collection
+- Sync against a simulated GitHub API with two browser profiles: bad token message, first upload, fresh device takes synced notes without duplicate starter pages, edits travel both ways, a both-sides edit keeps a "(from other device)" copy, permanent deletes sync and don't come back
+- Phone width (390 px): no sideways scrolling; Teach me and dark mode render
+
+No uncaught browser errors occurred in the checked flows.
+
+## Not tested
+
+Sync was tested against a simulated GitHub API, not a real repository. Windows/Linux installer binaries were not produced; the installed app is a browser PWA.
