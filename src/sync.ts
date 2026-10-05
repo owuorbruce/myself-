@@ -26,12 +26,24 @@ export const setState = (s: SyncState) => setLocal("syncState", s);
 
 export class SyncError extends Error {}
 
+async function request(url: string, init: RequestInit) {
+  try {
+    return await fetch(url, init);
+  } catch {
+    throw new SyncError(
+      navigator.onLine
+        ? "Couldn't reach GitHub. Try again in a moment."
+        : "You're offline. Slate will sync when you're back online.",
+    );
+  }
+}
+
 async function call(
   c: SyncConfig,
   path: string,
   init: RequestInit & { raw?: boolean } = {},
 ) {
-  const res = await fetch(API + c.repo + "/contents/" + path, {
+  const res = await request(API + c.repo + "/contents/" + path, {
     ...init,
     headers: {
       Authorization: "Bearer " + c.token,
@@ -70,7 +82,7 @@ function fromBase64(text: string) {
 export async function testConfig(c: SyncConfig) {
   if (!/^[\w.-]+\/[\w.-]+$/.test(c.repo))
     throw new SyncError("Write the repository as owner/name, like you/slate-notes.");
-  const res = await fetch(API + c.repo, {
+  const res = await request(API + c.repo, {
     headers: {
       Authorization: "Bearer " + c.token,
       Accept: "application/vnd.github+json",
