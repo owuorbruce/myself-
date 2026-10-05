@@ -1,0 +1,346 @@
+== install
+npm warn deprecated glob@11.1.0: Old versions of glob are not supported, and contain widely publicized security vulnerabilities, which have been fixed in the current version. Please update. Support for old versions may be purchased (at exorbitant rates) by contacting i@izs.me
+
+added 448 packages in 8s
+install_exit=0
+== test
+
+> slate-workspace@1.0.0 test
+> node --test tests/*.test.mjs
+
+TAP version 13
+# Subtest: Notion toggles become sections and Tap to Learn questions
+ok 1 - Notion toggles become sections and Tap to Learn questions
+  ---
+  duration_ms: 192.093107
+  type: 'test'
+  ...
+# Subtest: adding pages from a file keeps the workspace and nests matching pages
+ok 2 - adding pages from a file keeps the workspace and nests matching pages
+  ---
+  duration_ms: 2.111859
+  type: 'test'
+  ...
+# Subtest: first sync retains newly imported notes and remote notes
+ok 3 - first sync retains newly imported notes and remote notes
+  ---
+  duration_ms: 23.600203
+  type: 'test'
+  ...
+# Subtest: failed first pull preserves all local pages
+ok 4 - failed first pull preserves all local pages
+  ---
+  duration_ms: 0.947935
+  type: 'test'
+  ...
+# Subtest: remote task completion survives an unrelated local note edit
+ok 5 - remote task completion survives an unrelated local note edit
+  ---
+  duration_ms: 1.063093
+  type: 'test'
+  ...
+# Subtest: independent task and card field edits merge
+ok 6 - independent task and card field edits merge
+  ---
+  duration_ms: 0.513979
+  type: 'test'
+  ...
+# Subtest: collection rows added on both devices are preserved
+ok 7 - collection rows added on both devices are preserved
+  ---
+  duration_ms: 1.610053
+  type: 'test'
+  ...
+# Subtest: collection row removals and independent cell edits merge
+ok 8 - collection row removals and independent cell edits merge
+  ---
+  duration_ms: 0.624897
+  type: 'test'
+  ...
+# Subtest: conflicting collection values keep a valid recovery copy
+ok 9 - conflicting collection values keep a valid recovery copy
+  ---
+  duration_ms: 0.595622
+  type: 'test'
+  ...
+# Subtest: a missing baseline preserves conflicting task versions
+ok 10 - a missing baseline preserves conflicting task versions
+  ---
+  duration_ms: 0.563903
+  type: 'test'
+  ...
+# Subtest: numeric signs, decimal points and scientific near misses never pass
+ok 11 - numeric signs, decimal points and scientific near misses never pass
+  ---
+  duration_ms: 0.883946
+  type: 'test'
+  ...
+# Subtest: close answers record a miss and a short retry interval
+ok 12 - close answers record a miss and a short retry interval
+  ---
+  duration_ms: 0.660515
+  type: 'test'
+  ...
+# Subtest: legacy blank reviews resolve the latest prompt and answer
+ok 13 - legacy blank reviews resolve the latest prompt and answer
+  ---
+  duration_ms: 0.619928
+  type: 'test'
+  ...
+# Subtest: deleted blanks disappear from daily, weak and due counts
+ok 14 - deleted blanks disappear from daily, weak and due counts
+  ---
+  duration_ms: 0.738081
+  type: 'test'
+  ...
+# Subtest: automatic questions become invalid after their source changes
+ok 15 - automatic questions become invalid after their source changes
+  ---
+  duration_ms: 0.61594
+  type: 'test'
+  ...
+# Subtest: lesson question extraction keeps formatted reveal answers
+ok 16 - lesson question extraction keeps formatted reveal answers
+  ---
+  duration_ms: 0.220666
+  type: 'test'
+  ...
+# Subtest: backup replacement syncs after a previously clean sync
+ok 17 - backup replacement syncs after a previously clean sync
+  ---
+  duration_ms: 1.707207
+  type: 'test'
+  ...
+# Subtest: restoring a previously deleted page removes its tombstone
+ok 18 - restoring a previously deleted page removes its tombstone
+  ---
+  duration_ms: 0.295056
+  type: 'test'
+  ...
+# Subtest: attachment download 404 stops sync without a workspace upload
+ok 19 - attachment download 404 stops sync without a workspace upload
+  ---
+  duration_ms: 3.140016
+  type: 'test'
+  ...
+# Subtest: attachment download 500 stops sync without a workspace upload
+ok 20 - attachment download 500 stops sync without a workspace upload
+  ---
+  duration_ms: 1.066369
+  type: 'test'
+  ...
+# Subtest: missing local attachment stops first upload
+ok 21 - missing local attachment stops first upload
+  ---
+  duration_ms: 0.427295
+  type: 'test'
+  ...
+# Subtest: incomplete attachment download never saves bytes or marks sync complete
+ok 22 - incomplete attachment download never saves bytes or marks sync complete
+  ---
+  duration_ms: 1.271145
+  type: 'test'
+  ...
+# Subtest: incomplete local attachment stops sync
+ok 23 - incomplete local attachment stops sync
+  ---
+  duration_ms: 0.36076
+  type: 'test'
+  ...
+# Subtest: attachment upload 422 is an error, never false success
+ok 24 - attachment upload 422 is an error, never false success
+  ---
+  duration_ms: 0.868957
+  type: 'test'
+  ...
+# Subtest: successful attachment transfer finishes before metadata and stores baseline
+ok 25 - successful attachment transfer finishes before metadata and stores baseline
+  ---
+  duration_ms: 0.856413
+  type: 'test'
+  ...
+# Subtest: nested blanks remain available using their current answers
+ok 26 - nested blanks remain available using their current answers
+  ---
+  duration_ms: 0.204215
+  type: 'test'
+  ...
+# Subtest: baseline comparison preserves page changes despite device clock differences
+ok 27 - baseline comparison preserves page changes despite device clock differences
+  ---
+  duration_ms: 0.258197
+  type: 'test'
+  ...
+# Subtest: a concurrently edited value keeps its removed field for recovery
+ok 28 - a concurrently edited value keeps its removed field for recovery
+  ---
+  duration_ms: 0.317989
+  type: 'test'
+  ...
+# Subtest: incomplete remote attachment prevents a false successful upload
+ok 29 - incomplete remote attachment prevents a false successful upload
+  ---
+  duration_ms: 0.56769
+  type: 'test'
+  ...
+# Subtest: restored pages and tasks survive old remote deletion markers
+ok 30 - restored pages and tasks survive old remote deletion markers
+  ---
+  duration_ms: 0.547341
+  type: 'test'
+  ...
+# Subtest: a new deletion after restore still wins
+ok 31 - a new deletion after restore still wins
+  ---
+  duration_ms: 0.216187
+  type: 'test'
+  ...
+# Subtest: typed answers are graded right, close or wrong
+ok 32 - typed answers are graded right, close or wrong
+  ---
+  duration_ms: 3.228934
+  type: 'test'
+  ...
+# Subtest: reviews space out when right and come back soon when wrong
+ok 33 - reviews space out when right and come back soon when wrong
+  ---
+  duration_ms: 0.427425
+  type: 'test'
+  ...
+# Subtest: streak counts consecutive days and survives until the day ends
+ok 34 - streak counts consecutive days and survives until the day ends
+  ---
+  duration_ms: 0.501895
+  type: 'test'
+  ...
+# Subtest: sync merge keeps the newer page and adds pages from both devices
+ok 35 - sync merge keeps the newer page and adds pages from both devices
+  ---
+  duration_ms: 2.279685
+  type: 'test'
+  ...
+# Subtest: sync merge respects deletions and fixes orphans
+ok 36 - sync merge respects deletions and fixes orphans
+  ---
+  duration_ms: 1.341327
+  type: 'test'
+  ...
+# Subtest: edits made during a sync are kept
+ok 37 - edits made during a sync are kept
+  ---
+  duration_ms: 0.5467
+  type: 'test'
+  ...
+# Subtest: backups with interactive blocks and study data validate
+ok 38 - backups with interactive blocks and study data validate
+  ---
+  duration_ms: 1.038366
+  type: 'test'
+  ...
+# Subtest: valid workspace can be restored with its history, tasks, cards and files
+ok 39 - valid workspace can be restored with its history, tasks, cards and files
+  ---
+  duration_ms: 2.079518
+  type: 'test'
+  ...
+# Subtest: cyclic and missing page references cannot overwrite an existing workspace
+ok 40 - cyclic and missing page references cannot overwrite an existing workspace
+  ---
+  duration_ms: 0.484122
+  type: 'test'
+  ...
+# Subtest: invalid attachment references and malformed editor nodes are rejected
+ok 41 - invalid attachment references and malformed editor nodes are rejected
+  ---
+  duration_ms: 0.46228
+  type: 'test'
+  ...
+# Subtest: remote images and duplicate IDs cannot enter a restored workspace
+ok 42 - remote images and duplicate IDs cannot enter a restored workspace
+  ---
+  duration_ms: 1.278569
+  type: 'test'
+  ...
+# Subtest: page moves reject descendant cycles but allow a different parent
+ok 43 - page moves reject descendant cycles but allow a different parent
+  ---
+  duration_ms: 0.405655
+  type: 'test'
+  ...
+1..43
+# tests 43
+# suites 0
+# pass 43
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 802.489534
+test_exit=0
+== build
+
+> slate-workspace@1.0.0 build
+> tsc -b && vite build
+
+[36mvite v7.3.6 [32mbuilding client environment for production...[36m[39m
+transforming...
+[32m✓[39m 1702 modules transformed.
+rendering chunks...
+computing gzip size...
+[2mdist/[22m[32mmanifest.webmanifest                        [39m[1m[2m    0.40 kB[22m[1m[22m
+[2mdist/[22m[32mindex.html                                  [39m[1m[2m    0.63 kB[22m[1m[22m[2m │ gzip:   0.39 kB[22m
+[2mdist/[22m[32mocr/worker.min.js                           [39m[1m[2m  111.16 kB[22m[1m[22m
+[2mdist/[22m[2massets/[22m[32mpdf.worker.min-CjEcRF4W.mjs          [39m[1m[2m1,264.34 kB[22m[1m[22m
+[2mdist/[22m[32mocr/eng.traineddata.gz                      [39m[1m[2m2,952.87 kB[22m[1m[22m
+[2mdist/[22m[32mocr/tesseract-core-lstm.wasm.js             [39m[1m[2m3,954.18 kB[22m[1m[22m
+[2mdist/[22m[32mocr/tesseract-core-simd-lstm.wasm.js        [39m[1m[2m3,954.57 kB[22m[1m[22m
+[2mdist/[22m[2massets/[22m[35mindex-YFpN-yMF.css                   [39m[1m[2m   50.37 kB[22m[1m[22m[2m │ gzip:  10.66 kB[22m
+[2mdist/[22m[2massets/[22m[36mocr-DZ8eoGP4.js                      [39m[1m[2m    1.21 kB[22m[1m[22m[2m │ gzip:   0.65 kB[22m
+[2mdist/[22m[2massets/[22m[36mworkbox-window.prod.es5-BBnX5xw4.js  [39m[1m[2m    5.75 kB[22m[1m[22m[2m │ gzip:   2.36 kB[22m
+[2mdist/[22m[2massets/[22m[36mnotion-CPq1ADXS.js                   [39m[1m[2m    5.96 kB[22m[1m[22m[2m │ gzip:   2.89 kB[22m
+[2mdist/[22m[2massets/[22m[36mindex-DKzTZbVC.js                    [39m[1m[2m   15.65 kB[22m[1m[22m[2m │ gzip:   6.74 kB[22m
+[2mdist/[22m[2massets/[22m[36mpdf-DxPfgXyu.js                      [39m[1m[2m  437.57 kB[22m[1m[22m[2m │ gzip: 131.53 kB[22m
+[2mdist/[22m[2massets/[22m[36mindex-Cykv0_YI.js                    [39m[1m[2m  968.62 kB[22m[1m[22m[2m │ gzip: 305.15 kB[22m
+[32m✓ built in 6.10s[39m
+
+[36mPWA v1.3.0[39m
+mode      [35mgenerateSW[39m
+precache  [32m14 entries[39m [2m(2699.02 KiB)[22m
+files generated
+  [2mdist/sw.js[22m
+  [2mdist/workbox-2ff6bd68.js[22m
+build_exit=0
+== extras
+tesseract.esm.min.js
+tesseract.esm.min.js.map
+tesseract.min.js
+tesseract.min.js.LICENSE.txt
+tesseract.min.js.map
+worker.min.js
+worker.min.js.LICENSE.txt
+worker.min.js.map
+LICENSE
+README.md
+index.js
+package.json
+tesseract-core-lstm.js
+tesseract-core-lstm.wasm
+tesseract-core-lstm.wasm.js
+tesseract-core-simd-lstm.js
+tesseract-core-simd-lstm.wasm
+tesseract-core-simd-lstm.wasm.js
+tesseract-core-simd.js
+tesseract-core-simd.wasm
+tesseract-core-simd.wasm.js
+tesseract-core.js
+tesseract-core.wasm
+tesseract-core.wasm.js
+node_modules/@tesseract.js-data/eng
+node_modules/@tesseract.js-data/eng/4.0.0
+node_modules/@tesseract.js-data/eng/4.0.0/eng.traineddata.gz
+node_modules/@tesseract.js-data/eng/index.js
+node_modules/@tesseract.js-data/eng/4.0.0_best_int
+node_modules/@tesseract.js-data/eng/4.0.0_best_int/eng.traineddata.gz
+node_modules/@tesseract.js-data/eng/README.md
+node_modules/@tesseract.js-data/eng/package.json
+  "version": "6.0.1",
