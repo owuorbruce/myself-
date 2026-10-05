@@ -1,4 +1,5 @@
 import { Node, mergeAttributes } from "@tiptap/core";
+import type { DOMOutputSpec } from "@tiptap/pm/model";
 import StarterKit from "@tiptap/starter-kit";
 import TaskList from "@tiptap/extension-task-list";
 import TaskItem from "@tiptap/extension-task-item";
@@ -57,6 +58,147 @@ export const PageLink = Node.create({
     ];
   },
 });
+/** "Tap to Learn": a question whose answer stays hidden until tapped. */
+export const Reveal = Node.create({
+  name: "reveal",
+  group: "block",
+  content: "block+",
+  defining: true,
+  isolating: true,
+  addAttributes() {
+    return {
+      id: { default: "", rendered: false },
+      question: { default: "", rendered: false },
+    };
+  },
+  parseHTML() {
+    return [
+      {
+        tag: "details[data-reveal]",
+        contentElement: "div[data-answer]",
+        getAttrs: (el) => ({
+          id: el.getAttribute("data-id") || "",
+          question: el.querySelector("summary")?.textContent || "",
+        }),
+      },
+    ];
+  },
+  renderHTML({ node }) {
+    return [
+      "details",
+      { "data-reveal": "", "data-id": node.attrs.id, class: "reveal-static" },
+      ["summary", {}, node.attrs.question || "Question"],
+      ["div", { "data-answer": "" }, 0],
+    ];
+  },
+});
+/** Fill-in-the-blank: an inline gap with an accepted answer ("a|b"). */
+export const Blank = Node.create({
+  name: "blank",
+  group: "inline",
+  inline: true,
+  atom: true,
+  selectable: true,
+  addAttributes() {
+    return {
+      id: { default: "", rendered: false },
+      answer: { default: "", rendered: false },
+    };
+  },
+  parseHTML() {
+    return [
+      {
+        tag: "span[data-blank]",
+        getAttrs: (el) => ({
+          id: el.getAttribute("data-id") || "",
+          answer: el.getAttribute("data-answer") || el.textContent || "",
+        }),
+      },
+    ];
+  },
+  renderText({ node }) {
+    return `{{${node.attrs.answer}}}`;
+  },
+  renderHTML({ node }) {
+    return [
+      "span",
+      {
+        "data-blank": "",
+        "data-id": node.attrs.id,
+        "data-answer": node.attrs.answer,
+        class: "blank-static",
+      },
+      String(node.attrs.answer || "").split("|")[0],
+    ];
+  },
+});
+type Box = { id: string; x: number; y: number; w: number; h: number; answer: string };
+/** An image with boxes to label, like a lab practical slide. */
+export const LabelImage = Node.create({
+  name: "labelImage",
+  group: "block",
+  atom: true,
+  draggable: true,
+  addAttributes() {
+    return {
+      id: { default: "", rendered: false },
+      src: { default: "", rendered: false },
+      boxes: { default: [], rendered: false },
+    };
+  },
+  parseHTML() {
+    return [
+      {
+        tag: "figure[data-label-image]",
+        getAttrs: (el) => {
+          let boxes: Box[] = [];
+          try {
+            boxes = JSON.parse(el.getAttribute("data-boxes") || "[]");
+          } catch {
+            boxes = [];
+          }
+          return {
+            id: el.getAttribute("data-id") || "",
+            src: el.querySelector("img")?.getAttribute("src") || "",
+            boxes,
+          };
+        },
+      },
+    ];
+  },
+  renderHTML({ node }) {
+    const boxes = (node.attrs.boxes || []) as Box[];
+    return [
+      "figure",
+      {
+        "data-label-image": "",
+        "data-id": node.attrs.id,
+        "data-boxes": JSON.stringify(boxes),
+        class: "label-static",
+      },
+      [
+        "div",
+        { class: "label-frame" },
+        ["img", { src: node.attrs.src, alt: "Labelled diagram" }],
+        ...boxes.map(
+          (b): DOMOutputSpec => [
+            "span",
+            {
+              class: "label-tag",
+              style: `left:${b.x}%;top:${b.y}%;width:${b.w}%;height:${b.h}%`,
+            },
+            b.answer.split("|")[0],
+          ],
+        ),
+      ],
+      [
+        "figcaption",
+        {},
+        "Labels: " + boxes.map((b) => b.answer.split("|")[0]).join(", "),
+      ],
+    ];
+  },
+});
 export const extensions = [
   StarterKit.configure({
     link: { openOnClick: false, protocols: ["http", "https", "mailto"] },
@@ -68,4 +210,7 @@ export const extensions = [
   Image.configure({ allowBase64: true }),
   Callout,
   PageLink,
+  Reveal,
+  Blank,
+  LabelImage,
 ];

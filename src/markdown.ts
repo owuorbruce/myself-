@@ -1,14 +1,17 @@
 import type { JSONContent } from "@tiptap/react";
+import { uid } from "./types";
 function inline(text: string): JSONContent[] {
   const parts: JSONContent[] = [];
   const regex =
-    /(\*\*(.+?)\*\*|`([^`]+)`|\*([^*]+)\*|\[([^\]]+)\]\((https?:\/\/[^\s)]+)\))/g;
+    /(\*\*(.+?)\*\*|`([^`]+)`|\*([^*]+)\*|\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)|\{\{([^{}]+)\}\})/g;
   let last = 0;
   for (const m of text.matchAll(regex)) {
     if (m.index! > last)
       parts.push({ type: "text", text: text.slice(last, m.index) });
     parts.push(
-      m[2]
+      m[7]
+        ? { type: "blank", attrs: { id: uid(), answer: m[7].trim() } }
+        : m[2]
         ? { type: "text", text: m[2], marks: [{ type: "bold" }] }
         : m[3]
           ? { type: "text", text: m[3], marks: [{ type: "code" }] }
@@ -39,7 +42,35 @@ export function parseMarkdown(text: string): JSONContent {
   const lines = text.replace(/\r\n/g, "\n").split("\n");
   let code: string[] | null = null;
   let language = "";
+  let table: string[][] | null = null;
+  const endTable = () => {
+    if (!table) return;
+    const rows = table;
+    table = null;
+    const width = Math.max(...rows.map((r) => r.length));
+    blocks.push({
+      type: "table",
+      content: rows.map((r, i) => ({
+        type: "tableRow",
+        content: Array.from({ length: width }, (_, j) => ({
+          type: i === 0 ? "tableHeader" : "tableCell",
+          content: [{ type: "paragraph", content: inline(r[j] || "") }],
+        })),
+      })),
+    });
+  };
   for (const line of lines) {
+    if (!code && /^\s*\|.*\|\s*$/.test(line)) {
+      const cells = line
+        .trim()
+        .slice(1, -1)
+        .split(/(?<!\\)\|/)
+        .map((c) => c.trim().replace(/\\\|/g, "|"));
+      if (cells.every((c) => /^:?-{3,}:?$/.test(c))) continue;
+      (table ||= []).push(cells);
+      continue;
+    }
+    endTable();
     if (line.startsWith("```")) {
       if (code) {
         blocks.push({
@@ -104,6 +135,7 @@ export function parseMarkdown(text: string): JSONContent {
     }
     blocks.push({ type: "paragraph", content: inline(line) });
   }
+  endTable();
   if (code)
     blocks.push({
       type: "codeBlock",

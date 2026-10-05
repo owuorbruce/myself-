@@ -26,7 +26,11 @@ const types = new Set([
   "image",
   "callout",
   "pageLink",
+  "reveal",
+  "blank",
+  "labelImage",
 ]);
+const imageData = /^data:image\/(png|jpeg|gif|webp);base64,/;
 export function validDoc(doc, depth = 0) {
   if (!doc || typeof doc !== "object" || depth > 40 || !types.has(doc.type))
     return false;
@@ -56,11 +60,25 @@ export function validDoc(doc, depth = 0) {
     return false;
   if (doc.attrs) {
     if (typeof doc.attrs !== "object") return false;
-    if (
-      doc.type === "image" &&
-      !/^data:image\/(png|jpeg|gif|webp);base64,/.test(doc.attrs.src || "")
-    )
+    if (doc.type === "image" && !imageData.test(doc.attrs.src || ""))
       return false;
+    if (doc.type === "blank" && !str(doc.attrs.answer)) return false;
+    if (doc.type === "reveal" && !str(doc.attrs.question || "")) return false;
+    if (doc.type === "labelImage") {
+      if (!imageData.test(doc.attrs.src || "")) return false;
+      const boxes = doc.attrs.boxes || [];
+      if (
+        !list(boxes) ||
+        !boxes.every(
+          (b) =>
+            b &&
+            str(b.id) &&
+            str(b.answer) &&
+            ["x", "y", "w", "h"].every((k) => num(b[k])),
+        )
+      )
+        return false;
+    }
     if (doc.type === "heading" && ![1, 2, 3, 4, 5, 6].includes(doc.attrs.level))
       return false;
   }
@@ -131,6 +149,7 @@ export function validateWorkspace(w) {
       !str(c.answer) ||
       !num(c.due) ||
       !num(c.interval) ||
+      (c.ease !== undefined && !num(c.ease)) ||
       (c.pageId !== null && !pages.has(c.pageId))
     )
       fail();
@@ -183,9 +202,38 @@ export function validateWorkspace(w) {
         fail();
     }
   }
+  if (w.study !== undefined) {
+    if (
+      !w.study ||
+      !list(w.study.items) ||
+      !list(w.study.days) ||
+      !w.study.days.every(str)
+    )
+      fail();
+    for (const i of w.study.items)
+      if (
+        !str(i.id) ||
+        !(i.pageId === null || str(i.pageId)) ||
+        !["reveal", "blank", "label", "card", "auto"].includes(i.kind) ||
+        !str(i.prompt) ||
+        !str(i.answer) ||
+        !["right", "wrong", "due", "interval", "ease", "last"].every((k) =>
+          num(i[k]),
+        )
+      )
+        fail();
+  }
+  if (
+    w.deleted !== undefined &&
+    (!w.deleted ||
+      typeof w.deleted !== "object" ||
+      Array.isArray(w.deleted) ||
+      !Object.values(w.deleted).every(num))
+  )
+    fail();
   if (
     !w.settings ||
-    !["light", "dark", "sepia"].includes(w.settings.theme) ||
+    !["system", "light", "dark", "sepia"].includes(w.settings.theme) ||
     !["sans", "serif"].includes(w.settings.font) ||
     !bool(w.settings.wide)
   )

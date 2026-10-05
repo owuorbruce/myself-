@@ -15,6 +15,9 @@ const mime = {
   ".png": "image/png",
   ".svg": "image/svg+xml",
   ".woff2": "font/woff2",
+  ".wasm": "application/wasm",
+  ".gz": "application/gzip",
+  ".txt": "text/plain",
 };
 const server = http.createServer(async (req, res) => {
   try {

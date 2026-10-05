@@ -20,9 +20,20 @@ import {
   BookOpen,
   PanelRight,
   Paperclip,
+  Eye,
+  TextCursorInput,
+  Tag,
+  GraduationCap,
 } from "lucide-react";
 import { extensions } from "./extensions";
-import { plain, type Page, type Workspace } from "./types";
+import { interactiveExtensions } from "./blocks";
+import { plain, uid, type Page, type Workspace } from "./types";
+import type { Attempt } from "./study";
+const interactiveNames = new Set(interactiveExtensions.map((e) => e.name));
+const editorExtensions = [
+  ...extensions.filter((e) => !interactiveNames.has(e.name)),
+  ...interactiveExtensions,
+];
 const slashCommands = [
   ["Text", "A plain paragraph", "text"],
   ["Heading 1", "A large section heading", "h1"],
@@ -32,6 +43,9 @@ const slashCommands = [
   ["Numbered list", "Step by step", "ordered"],
   ["Checklist", "Keep track of progress", "task"],
   ["Quote", "A passage worth saving", "quote"],
+  ["Tap to Learn", "A question with a hidden answer", "reveal"],
+  ["Fill in the blank", "A gap you type the answer into", "blank"],
+  ["Label an image", "Cover labels on a diagram and quiz yourself", "label"],
   ["Callout", "Make something stand out", "note"],
   ["Exam marker", "Collect this in Study mode", "exam"],
   ["Definition", "Save an important concept", "definition"],
@@ -51,6 +65,8 @@ export default function NoteEditor({
   onAI,
   onLink,
   onOutline,
+  onAttempt,
+  onLearn,
 }: {
   page: Page;
   data: Workspace;
@@ -62,7 +78,14 @@ export default function NoteEditor({
   onAI: () => void;
   onLink: () => void;
   onOutline: () => void;
+  onAttempt: (attempt: Attempt) => void;
+  onLearn: () => void;
 }) {
+  const attempt = useRef(onAttempt);
+  attempt.current = onAttempt;
+  const wrap = useRef<HTMLDivElement>(null);
+  const imageInput = useRef<HTMLInputElement>(null);
+
   const callback = useRef(onChange);
   callback.current = onChange;
   const select = useRef(onSelect);
@@ -77,7 +100,7 @@ export default function NoteEditor({
   const editor = useEditor(
     {
       extensions: [
-        ...extensions,
+        ...editorExtensions,
         Placeholder.configure({
           placeholder: "Write something, or type / for commands…",
         }),
@@ -137,6 +160,17 @@ export default function NoteEditor({
     window.addEventListener("slate-insert", handle);
     return () => window.removeEventListener("slate-insert", handle);
   }, [editor, page.id]);
+  useEffect(() => {
+    const el = wrap.current;
+    if (!el) return;
+    const handle = (e: Event) =>
+      attempt.current({
+        ...(e as CustomEvent<Omit<Attempt, "pageId">>).detail,
+        pageId: page.id,
+      });
+    el.addEventListener("slate-attempt", handle);
+    return () => el.removeEventListener("slate-attempt", handle);
+  }, [page.id, editor]);
   const filtered = slashCommands.filter((c) =>
     (c[0] + " " + c[1])
       .toLowerCase()
@@ -144,9 +178,55 @@ export default function NoteEditor({
   );
   function command(type: string) {
     if (!editor) return;
+    if (type === "label") {
+      if (slash)
+        editor
+          .chain()
+          .focus()
+          .deleteRange({ from: slash.from, to: slash.to })
+          .run();
+      setSlash(null);
+      imageInput.current?.click();
+      return;
+    }
+    const { from, to } = editor.state.selection;
+    const selected = editor.state.doc.textBetween(from, to, " ").trim();
     let chain = editor.chain().focus();
     if (slash) chain = chain.deleteRange({ from: slash.from, to: slash.to });
     switch (type) {
+      case "blank": {
+        const answer =
+          (!slash && selected) ||
+          prompt(
+            "What's the answer for this blank? (separate alternatives with |)",
+          )?.trim();
+        if (!answer) {
+          setSlash(null);
+          return;
+        }
+        chain
+          .insertContent([
+            { type: "blank", attrs: { id: uid(), answer } },
+            { type: "text", text: " " },
+          ])
+          .run();
+        break;
+      }
+      case "reveal":
+        chain
+          .insertContent({
+            type: "reveal",
+            attrs: { id: uid(), question: "" },
+            content: [
+              {
+                type: "paragraph",
+                content:
+                  !slash && selected ? [{ type: "text", text: selected }] : [],
+              },
+            ],
+          })
+          .run();
+        break;
       case "text":
         chain.setParagraph().run();
         break;
@@ -231,10 +311,37 @@ export default function NoteEditor({
   );
   return (
     <div
+      ref={wrap}
       className={
         "editor-wrap " + (data.settings.font === "serif" ? "serif" : "")
       }
     >
+      <input
+        hidden
+        ref={imageInput}
+        type="file"
+        accept="image/png,image/jpeg,image/webp,image/gif"
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          e.target.value = "";
+          if (!file) return;
+          if (file.size > 5 * 1024 * 1024) {
+            alert("Pick an image smaller than 5 MB.");
+            return;
+          }
+          const reader = new FileReader();
+          reader.onload = () =>
+            editor
+              .chain()
+              .focus()
+              .insertContent({
+                type: "labelImage",
+                attrs: { id: uid(), src: reader.result, boxes: [] },
+              })
+              .run();
+          reader.readAsDataURL(file);
+        }}
+      />
       <div className="formatbar">
         {tool("Undo", Undo2, () => {
           editor.chain().focus().undo().run();
@@ -316,6 +423,17 @@ export default function NoteEditor({
         {tool("Code block", Code, () => command("code"))}
         {tool("Table", Table, () => command("table"))}
         {tool("Divider", Minus, () => command("divider"))}
+        <span className="toolbar-separator" />
+        {tool("Tap to Learn: hide an answer behind a question", Eye, () =>
+          command("reveal"),
+        )}
+        {tool(
+          "Fill in the blank (select a word first)",
+          TextCursorInput,
+          () => command("blank"),
+        )}
+        {tool("Label an image", Tag, () => command("label"))}
+        <span className="toolbar-separator" />
         {tool("Link a page", Link, onLink)}
         {tool("Attach file", Paperclip, onFile)}
       </div>
@@ -365,6 +483,9 @@ export default function NoteEditor({
           }}
         >
           <ListTodo size={15} /> Task
+        </button>
+        <button className="learn-button" onClick={onLearn}>
+          <GraduationCap size={15} /> Teach me
         </button>
         <button onClick={onAI}>✦ Ask ChatGPT</button>
         <button aria-label="Page outline" onClick={onOutline}>
