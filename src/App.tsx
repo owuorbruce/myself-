@@ -2936,7 +2936,7 @@ export default function App() {
                 <ScanText size={17} /> Download text reading for offline use
               </button>
               <p className="small">
-                About 15 MB, downloaded once. It also downloads by itself the
+                About 11 MB, downloaded once. It also downloads by itself the
                 first time you read a file while online.
               </p>
             </div>

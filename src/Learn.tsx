@@ -236,6 +236,7 @@ type Step =
       teachHtml: string;
       pop?: boolean;
       retry?: boolean;
+      tries?: number;
     };
 
 function pick<T>(list: T[], n: number) {
@@ -326,12 +327,17 @@ export function LearnView({
       return;
     }
     setMissed((m) => (m.some((x) => x.key === s.q.key) ? m : [...m, s.q]));
-    // Bring the question back a little later.
-    setSteps((all) => {
-      const copy = [...all];
-      copy.splice(Math.min(copy.length, pos + 4), 0, { ...s, retry: true });
-      return copy;
-    });
+    // Bring the question back a little later, up to twice.
+    if ((s.tries || 0) < 2)
+      setSteps((all) => {
+        const copy = [...all];
+        copy.splice(Math.min(copy.length, pos + 4), 0, {
+          ...s,
+          retry: true,
+          tries: (s.tries || 0) + 1,
+        });
+        return copy;
+      });
     if (hearts <= 1) {
       setHearts(0);
       setOut(true);

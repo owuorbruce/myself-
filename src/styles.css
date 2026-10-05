@@ -3498,3 +3498,8 @@ kbd {
     width: 100%;
   }
 }
+.learn-card .teach-body {
+  min-height: 0;
+  padding: 0;
+  max-width: none;
+}

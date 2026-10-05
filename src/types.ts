@@ -159,9 +159,9 @@ export function examplePage(parentId: string | null = null): Page {
     type: "doc",
     content: [
       para(
-        t("Notes on this page quiz you back. Press "),
-        t("Teach me", true),
-        t(" at the top to learn it one bite at a time, or try the blocks right here."),
+        t(
+          "Notes on this page quiz you back. Press Teach me at the top to learn it one bite at a time, or try the blocks right here.",
+        ),
       ),
       h2("Bone cells"),
       para(
