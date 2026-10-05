@@ -71,7 +71,8 @@ app.on('second-instance', () => { if (window) { if (window.isMinimized()) window
 app.on('window-all-closed', () => app.quit());
 app.on('will-quit', () => { void local?.close(); });
 if (!firstInstance) app.quit();
-else await app.whenReady().then(async () => {
+// ESM must finish loading before Electron can emit ready.
+else void app.whenReady().then(async () => {
   const source = app.isPackaged ? app.getAppPath() : path.resolve(app.getAppPath(), '..');
   const { createLocalServer } = await import(pathToFileURL(path.join(source, 'server', 'local-server.mjs')).href);
   const { ChatGPTRuntime } = await import(pathToFileURL(path.join(source, 'server', 'chatgpt-auth.mjs')).href);
