@@ -8,3 +8,7 @@ export function schedule(
 export function label(interval: number): string;
 export function localDay(time?: number): string;
 export function streak(days: string[], now?: number): number;
+
+
+export function gradeRating(result: "right" | "close" | "wrong"): 0 | 2;
+export function gradeCorrect(result: "right" | "close" | "wrong"): boolean;

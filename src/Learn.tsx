@@ -12,7 +12,7 @@ import {
   Trophy,
   X,
 } from "lucide-react";
-import { grade, streak } from "./grading.mjs";
+import { gradeRating, gradeCorrect, grade, streak } from "./grading.mjs";
 import { buildLesson, lessonStats } from "./lesson";
 import type { Page, Workspace } from "./types";
 import { studyOf, type Attempt, type Question, type Rating } from "./study";
@@ -126,8 +126,8 @@ export function QuestionCard({
               e.preventDefault();
               if (result) {
                 finish(
-                  result === "right" ? 2 : result === "close" ? 1 : 0,
-                  result !== "wrong",
+                  gradeRating(result),
+                  gradeCorrect(result),
                 );
               } else check();
             }}
@@ -166,7 +166,7 @@ export function QuestionCard({
                 {result === "right"
                   ? "Correct!"
                   : result === "close"
-                    ? "Almost. Watch the spelling."
+                    ? "Check the term and spelling. This counts as a miss."
                     : "Not quite."}
               </strong>
               {result !== "right" && (
@@ -174,14 +174,14 @@ export function QuestionCard({
                   Answer: <b>{first}</b>
                 </p>
               )}
-              {result === "wrong" && teachHtml && (
+              {result !== "right" && teachHtml && (
                 <details className="teach-again" open>
                   <summary>Here's the bit you need again</summary>
                   <div dangerouslySetInnerHTML={{ __html: teachHtml }} />
                 </details>
               )}
               <div className="quiz-actions">
-                {result === "wrong" && value.trim() && (
+                {result !== "right" && value.trim() && (
                   <button onClick={() => finish(1, true)}>
                     I was right
                   </button>
@@ -191,8 +191,8 @@ export function QuestionCard({
                   autoFocus
                   onClick={() =>
                     finish(
-                      result === "right" ? 2 : result === "close" ? 1 : 0,
-                      result !== "wrong",
+                      gradeRating(result),
+                      gradeCorrect(result),
                     )
                   }
                 >

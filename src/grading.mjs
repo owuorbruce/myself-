@@ -7,7 +7,8 @@ export function normalize(text) {
     .toLowerCase()
     .normalize("NFKD")
     .replace(/[̀-ͯ]/g, "")
-    .replace(/[^a-z0-9\s]/g, " ")
+    .replace(/[−–]/g, "-")
+    .replace(/[^a-z0-9\s+\-./%°=<>]/g, " ")
     .split(/\s+/)
     .filter((w) => w && !ARTICLES.has(w))
     .join(" ");
@@ -46,10 +47,6 @@ export function grade(input, answers) {
   if (!accepted.length) return "wrong";
   if (accepted.includes(given)) return "right";
   for (const answer of accepted) {
-    // Plurals and simple suffix differences count as right.
-    if (given.replace(/s$/, "") === answer.replace(/s$/, "")) return "right";
-  }
-  for (const answer of accepted) {
     const allowed = Math.max(1, Math.floor(answer.length * 0.2));
     if (distance(given, answer) <= allowed) return "close";
     const words = answer.split(" ");
@@ -69,6 +66,9 @@ const DAY = 86400000;
  * Spaced repetition step. rating: 0 again, 1 hard, 2 good, 3 easy.
  * interval is in days. Returns the new { interval, ease, due }.
  */
+export const gradeRating = (result) => result === "right" ? 2 : 0;
+export const gradeCorrect = (result) => result === "right";
+
 export function schedule(previous, rating, now = Date.now()) {
   let interval = previous.interval || 0;
   let ease = previous.ease || 2.5;
@@ -119,3 +119,4 @@ export function streak(days, now = Date.now()) {
   }
   return count;
 }
+

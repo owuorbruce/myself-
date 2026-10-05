@@ -8,6 +8,8 @@ An offline personal workspace for notes, coursework, projects, tasks, and study 
 
 ## Start using it
 
+Open the hosted app: https://owuorbruce.github.io/myself-/
+
 The ZIP includes the source and a ready-built `dist/` folder. Unzip the entire folder first.
 
 ### Run locally on Windows or Linux
@@ -32,7 +34,7 @@ Always use the same address, **http://localhost:4173/**, for your local workspac
 
 The workflow detects the GitHub Pages base path, builds Slate, runs the validation tests, and publishes only the app files. It supports project repositories, account Pages repositories, and configured custom domains.
 
-Your notes and attachments are **not committed to GitHub**. They stay in the browser's IndexedDB storage. GitHub distributes the app code. This is a single-user device workspace, with no automatic cloud sync.
+By default, notes and attachments stay in this browser's IndexedDB storage. GitHub Pages distributes only the app code. If you enable optional sync, Slate also uploads notes and attachment bytes to the private GitHub repository you choose.
 
 GitHub setup documentation: https://docs.github.com/en/pages/getting-started-with-github-pages/configuring-a-publishing-source-for-your-github-pages-site
 
@@ -45,7 +47,7 @@ GitHub setup documentation: https://docs.github.com/en/pages/getting-started-wit
 | Navigation   | Search and command menu, page tabs, split view with two editors, outline, focus mode, backlinks                                              |
 | Collections  | Editable custom fields: text, number, date, checkbox, select, URL; table, board, calendar agenda, list, gallery; assignment tracker template |
 | Tasks        | Dedicated tasks with due dates, priority, and source pages; aggregated checklists from notes                                                 |
-| Interactive  | Tap to Learn questions, fill-in-the-blanks, label-the-image diagrams with green / amber / red grading, right inside your notes                |
+| Interactive  | Tap to Learn questions, fill-in-the-blanks, label-the-image diagrams with green / amber / red feedback, right inside your notes                |
 | Teach me     | Turns any page into small teach-then-quiz bites with hearts, XP, pop quizzes and retries of what you missed                                  |
 | Studying     | Daily 5-minute review, weak-spot tracking, study streak, spaced repetition for flashcards and quiz blocks, exam / definition markers          |
 | Files        | Local attachments, image insertion, PDF and image preview, text/PDF attachment search, offline OCR for scans and photos                      |
@@ -129,6 +131,15 @@ After the first successful visit, the app shows **Offline ready** when its cache
 Browser storage is finite and can be removed by clearing site data or deleting a browser profile. Use **Request persistent storage** and export regular backups. Persistent storage requests are subject to the browser's decision. Backups are ordinary unencrypted ZIP files; store them wherever you keep your private documents.
 
 Only one tab should edit a workspace at a time. Saves check a revision number so a stale tab cannot silently overwrite another tab. If you see a save conflict, export your unsaved work and reload before editing further.
+
+## Reliability
+
+- Connecting sync always keeps existing notes, including new and imported notes. Starter pages may remain alongside remote notes.
+- Sync uses the last successful snapshot to merge tasks, cards and collection rows independently. Conflicting edits are retained as copies.
+- Only exact answers or explicit `|` alternatives pass automatically; close spellings are hints and count as missed until corrected or explicitly self-approved. Numeric signs and decimal points are preserved.
+- Reviews use the current blank answers and prompts. Deleted blanks and changed automatic questions leave the review queue.
+- Restoring a backup marks it for sync and records deletions of replaced records. Changes made on another device can still be preserved as conflict copies.
+- Missing, incomplete or failed attachment transfers stop sync and show an error before publishing the workspace.
 
 ## History and backups
 
@@ -214,3 +225,4 @@ Attachment limit: 25 MB each. Inline image limit: under 5 MB. PDF indexing: up t
 ## License
 
 The project code is released under the MIT License. Dependencies keep their own licenses.
+

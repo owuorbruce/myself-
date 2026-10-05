@@ -1,45 +1,23 @@
-# Verification
+# Reliability verification
 
-Version 2 (interactive notes, Teach me, study tracking, split storage, sync, Notion import, OCR) passed 12 Node tests and 55 browser checks.
+The reliability patch passed **41 Node tests** (`npm test`) and a production build (`npm run build`, including TypeScript checks and service-worker generation).
 
-The browser checks ran in Chromium against the packaged production build served by `run-slate.mjs`.
+## Scope
 
-## Node tests (`npm test`)
+- Connecting sync keeps existing and imported notes; failed first reads do not clear them.
+- Last-successful-sync baselines merge task/card fields and collection rows independently. Simultaneous conflicting values keep recovery copies. Tests check that inputs are unchanged and merged backups validate.
+- Numeric signs and decimal points are preserved. Near matches never automatically increase correct-answer counts or successful review intervals; explicit accepted aliases still work.
+- Blank reviews resolve current source text and answers, including older records without references and nested blanks. Deleted blanks and obsolete automatic questions are removed from daily/weak/due counts.
+- Restores mark sync dirty, record replaced-record deletions and explicit recovery markers, and upload after a previously clean sync. Old deletion markers cannot erase explicitly restored records; newer deletions still apply.
+- Attachment download errors, missing bytes, truncated files, remote size mismatches and upload validation failures stop sync before workspace metadata is uploaded or sync state is marked complete. Successful transfers precede metadata uploads.
+- Existing backup validation, hierarchy, scheduling, streak and edit-rebasing tests continue to pass.
 
-- Backup and hierarchy validation, including the new blocks and study data
-- Answer grading: right, near miss, wrong, alternatives and plurals
-- Spaced repetition intervals and streak counting across days
-- Sync merge: newer page wins, both-sides edits keep a copy, deletions stick, orphaned pages are re-parented, inputs aren't modified
-- Edits made while a sync is running are kept
+## Test method and limits
 
-## Interactive notes and studying
+Regression tests execute the actual TypeScript study and sync helpers, transpiled by the project's TypeScript dependency. IndexedDB is replaced with an in-memory store and the GitHub API with deterministic responses, including failure responses. No new dependencies were added.
 
-- Top-bar theme button switches light and dark; "Match my device" follows the system
-- Fill-in-the-blank grades right / close / wrong; Tap to Learn reveals and records "Got it" / "Not yet"
-- Slash menu and toolbar insert Tap to Learn, blanks (from a selection) and labelled images
-- Label the image: drawing boxes, checking, the score, and Retry mistakes clearing only wrong boxes
-- Teach me runs a whole lesson: teach cards, typed and self-graded questions, hearts, retries capped at two, finish screen with weak spots
-- Teach me asks about labelled-image boxes
-- Study shows the streak, today's review and weak spots; weak-spot practice starts
-- Study history and edits survive reloads
-- Inserting a file or text while a block is selected adds it after the block instead of replacing it
+The application also guards a restore against an older in-flight sync applying its result. An attempted Chromium UI check could not start: the browser process exited with SIGSEGV before any assertions. The earlier version's browser-check count is not evidence for this patch and is not repeated here.
 
-## Storage, backups and offline
+Sync failure and merge cases were tested against a simulated API, not a live private notes repository. GitHub Actions runs the test suite and builds the hosted app during deployment.
 
-- A workspace created by the previous version opens in this one with its pages intact and is converted to split storage (version 2, page content no longer in the main record)
-- Markdown export keeps blanks as `{{answer}}` and Tap to Learn as `**Q: …**`
-- Backup ZIP export, permanent delete, and restore bring back pages, blocks and study history
-- After the app is cached: opens offline, Teach me works offline, offline edits are saved
-
-## Files, import and sync
-
-- OCR reads an attached image, the text becomes searchable and can be put into the page
-- Notion export (nested ZIP with a wrapper folder): pages and nesting, inline image, table, callout, page links, `{{blank}}`, attached file, database to Collection
-- Sync against a simulated GitHub API with two browser profiles: bad token message, first upload, fresh device takes synced notes without duplicate starter pages, edits travel both ways, a both-sides edit keeps a "(from other device)" copy, permanent deletes sync and don't come back
-- Phone width (390 px): no sideways scrolling; Teach me and dark mode render
-
-No uncaught browser errors occurred in the checked flows.
-
-## Not tested
-
-Sync was tested against a simulated GitHub API, not a real repository. Windows/Linux installer binaries were not produced; the installed app is a browser PWA.
+The checked-in `dist/` folder is rebuilt for the dependency-free local launcher. GitHub Pages builds from source with the repository base path.

@@ -7,12 +7,12 @@ import {
 } from "@tiptap/react";
 import { Check, Eye, EyeOff, Pencil, RotateCcw, Tag, X } from "lucide-react";
 import { Reveal, Blank, LabelImage } from "./extensions";
-import { grade } from "./grading.mjs";
+import { gradeRating, grade } from "./grading.mjs";
 import { uid } from "./types";
 import type { Attempt, LabelBox } from "./study";
 
 type Result = "right" | "close" | "wrong";
-const rating = (r: Result) => (r === "right" ? 2 : r === "close" ? 1 : 0);
+const rating = gradeRating;
 
 /** Interactive blocks report attempts by bubbling an event to the editor. */
 function report(from: Element | null, attempt: Omit<Attempt, "pageId">) {
@@ -142,6 +142,7 @@ function BlankView(props: NodeViewProps) {
     report(el, {
       id: "blank:" + node.attrs.id,
       kind: "blank",
+      ref: { node: String(node.attrs.id) },
       prompt: sentence(),
       answer,
       rating: rating(r),
@@ -187,6 +188,7 @@ function BlankView(props: NodeViewProps) {
               report(e.currentTarget, {
                 id: "blank:" + node.attrs.id,
                 kind: "blank",
+      ref: { node: String(node.attrs.id) },
                 prompt: sentence(),
                 answer,
                 rating: 0,
@@ -468,3 +470,4 @@ export const interactiveExtensions = [
     },
   }),
 ];
+

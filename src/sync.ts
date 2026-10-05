@@ -24,6 +24,8 @@ export async function getState(): Promise<SyncState> {
 }
 export const setState = (s: SyncState) => setLocal("syncState", s);
 
+export const clearBase = () => setLocal("syncBase", undefined);
+
 export class SyncError extends Error {}
 
 async function request(url: string, init: RequestInit) {
@@ -140,10 +142,10 @@ async function write(
 
 async function remoteFiles(c: SyncConfig) {
   const res = await call(c, `${FOLDER}/attachments`);
-  if (res.status === 404) return new Set<string>();
+  if (res.status === 404) return new Map<string, number>();
   if (!res.ok) throw new SyncError("Couldn't list synced attachments.");
-  const list = (await res.json()) as { name: string }[];
-  return new Set(list.map((f) => f.name));
+  const list = (await res.json()) as { name: string; size: number }[];
+  return new Map(list.map((f) => [f.name, f.size]));
 }
 
 export type SyncResult = {
@@ -167,43 +169,56 @@ export async function syncNow(
   let data = local;
   let conflicts: string[] = [];
   if (remote && remote.sha !== state.sha) {
-    const merged = mergeWorkspaces(local, remote.data, state, uid);
+    const base = await getLocal<Workspace>("syncBase");
+    const merged = mergeWorkspaces(local, remote.data, { ...state, base }, uid);
     data = merged.data;
     conflicts = merged.conflicts;
   }
   const changed = data !== local;
   // Fetch attachment bytes this device doesn't have yet.
   for (const a of data.attachments) {
-    if (await getFile(a.id)) continue;
+    const existing = await getFile(a.id);
+    if (existing) {
+      if (existing.size !== a.size) throw new SyncError(`Attachment ${a.name} has incomplete bytes. Restore it from a backup before syncing.`);
+      continue;
+    }
     const res = await call(c, `${FOLDER}/attachments/${a.id}`, { raw: true });
-    if (res.ok) await putFile(a.id, new Blob([await res.arrayBuffer()], { type: a.type }));
+    if (!res.ok) throw new SyncError(`Couldn't download ${a.name} (${res.status}). Sync is incomplete; your local notes are safe.`);
+    const blob = new Blob([await res.arrayBuffer()], { type: a.type });
+    if (blob.size !== a.size) throw new SyncError(`Download of ${a.name} was incomplete. Try syncing again.`);
+    await putFile(a.id, blob);
   }
   let sha = remote?.sha || "";
   if (!remote || state.dirty || changed || remote.sha !== state.sha) {
     // Upload new attachments before the workspace that refers to them.
     const have = await remoteFiles(c);
     for (const a of data.attachments) {
-      if (have.has(a.id)) continue;
+      if (have.has(a.id)) {
+        if (have.get(a.id) !== a.size)
+          throw new SyncError(`Synced attachment ${a.name} is incomplete. Restore it before syncing.`);
+        continue;
+      }
       const blob = await getFile(a.id);
-      if (!blob) continue;
+      if (!blob || blob.size !== a.size) throw new SyncError(`Attachment ${a.name} is missing or incomplete. Restore it before syncing.`);
       const res = await write(
         c,
         `${FOLDER}/attachments/${a.id}`,
         toBase64(new Uint8Array(await blob.arrayBuffer())),
       );
-      if (!res.ok && res.status !== 422)
+      if (!res.ok)
         throw new SyncError(`Couldn't upload ${a.name} (${res.status}).`);
     }
     const body = toBase64(new TextEncoder().encode(JSON.stringify(data)));
     const res = await write(c, `${FOLDER}/workspace.json`, body, remote?.sha);
     if (res.status === 409 || res.status === 422) {
       // Another device synced in between. Start over once.
-      if (attempt < 2) return syncNow(c, data, attempt + 1);
+      if (attempt < 2) return syncNow(c, local, attempt + 1);
       throw new SyncError("Another device keeps syncing. Try again in a moment.");
     }
     if (!res.ok) throw new SyncError("Couldn't upload to GitHub (" + res.status + ").");
     sha = (await res.json()).content.sha;
   }
+  await setLocal("syncBase", data);
   await setState({ sha, lastSync: started, dirty: false });
   return { data, changed: data !== local || attempt > 0, conflicts };
 }

@@ -231,6 +231,9 @@ export function validateWorkspace(w) {
       !Object.values(w.deleted).every(num))
   )
     fail();
+  if (w.restored !== undefined &&
+    (!w.restored || typeof w.restored !== "object" || Array.isArray(w.restored) ||
+      !Object.values(w.restored).every(num))) fail();
   if (
     !w.settings ||
     !["system", "light", "dark", "sepia"].includes(w.settings.theme) ||

@@ -1,3 +1,4 @@
+import { questionsFrom, currentBlank } from "./questions";
 import type { JSONContent } from "@tiptap/react";
 import { schedule, localDay } from "./grading.mjs";
 import {
@@ -154,6 +155,13 @@ export function itemQuestion(i: StudyItem, pages: Page[]): Question | null {
       ref: i.ref,
     };
   }
+  if (i.kind === "blank" || i.kind === "auto") {
+    if (!page) return null;
+    if (i.kind === "blank") return currentBlank(page.content, page.id, i.id);
+    return (page.content.content || [])
+      .flatMap((n) => questionsFrom(n, page.id))
+      .find((q) => q.key === i.id) || null;
+  }
   return {
     key: i.id,
     kind: i.kind,
@@ -214,20 +222,23 @@ export function weakQueue(data: Workspace, limit = 15) {
 }
 
 export function weakSpots(data: Workspace) {
-  const pages = new Set(data.pages.filter((p) => !p.trashed).map((p) => p.id));
+  const active = data.pages.filter((p) => !p.trashed);
+  const pages = new Set(active.map((p) => p.id));
   return studyOf(data)
     .items.filter(
-      (i) => weakness(i) > 0 && (!i.pageId || pages.has(i.pageId)),
+      (i) => weakness(i) > 0 && (!i.pageId || pages.has(i.pageId)) &&
+        (i.kind === "card" ? data.cards.some((c) => "card:" + c.id === i.id) : !!itemQuestion(i, active)),
     )
     .sort((a, b) => weakness(b) - weakness(a) || b.last - a.last);
 }
 
 export function dueCount(data: Workspace, now = Date.now()) {
+  const active = data.pages.filter((p) => !p.trashed);
   const pages = new Set(data.pages.filter((p) => !p.trashed).map((p) => p.id));
   const live = (id: string | null) => !id || pages.has(id);
   return (
     studyOf(data).items.filter(
-      (i) => i.kind !== "card" && i.due <= now && live(i.pageId),
+      (i) => i.kind !== "card" && i.due <= now && live(i.pageId) && !!itemQuestion(i, active),
     ).length +
     data.cards.filter((c) => c.due <= now && live(c.pageId)).length
   );

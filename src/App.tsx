@@ -59,6 +59,7 @@ import {
   type Rating,
 } from "./study";
 import { schedule, label as intervalLabel, streak } from "./grading.mjs";
+import { prepareRestore } from "./sync-merge.mjs";
 import * as sync from "./sync";
 import Collections from "./Collections";
 import {
@@ -213,6 +214,8 @@ export default function App() {
   const notionInput = useRef<HTMLInputElement>(null);
   const syncOn = useRef(false),
     syncing = useRef(false),
+    restoring = useRef(false),
+    syncEpoch = useRef(0),
     syncTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [busy, setBusy] = useState(false);
   const [installed, setInstalled] = useState<BeforeInstallPromptEvent | null>(
@@ -300,6 +303,7 @@ export default function App() {
     syncTimer.current = setTimeout(() => void runSync(), delay);
   }
   async function runSync(manual = false) {
+    if (restoring.current) return;
     if (syncing.current) {
       if (manual) notify("A sync is already running.");
       return;
@@ -308,15 +312,20 @@ export default function App() {
       setSyncInfo((i) => ({ ...i, status: "Waiting for a connection" }));
       return;
     }
-    const config = await sync.getConfig();
-    if (!config || !stateRef.current) return;
     syncing.current = true;
-    if (syncTimer.current) clearTimeout(syncTimer.current);
-    setSyncInfo((i) => ({ ...i, status: "Syncing…", error: false }));
+    const epoch = syncEpoch.current;
     try {
+      const config = await sync.getConfig();
+      if (!config || !stateRef.current || restoring.current || epoch !== syncEpoch.current) return;
+      if (syncTimer.current) clearTimeout(syncTimer.current);
+      setSyncInfo((i) => ({ ...i, status: "Syncing…", error: false }));
       await flush();
+      if (epoch !== syncEpoch.current) return;
       const before = stateRef.current;
       const result = await sync.syncNow(config, before);
+      if (epoch !== syncEpoch.current) {
+        return;
+      }
       const now = stateRef.current;
       const edited = now !== before;
       if (result.changed || edited) {
@@ -349,6 +358,10 @@ export default function App() {
       if (manual) notify(m);
     } finally {
       syncing.current = false;
+      if (epoch !== syncEpoch.current && syncOn.current) {
+        await sync.markDirty();
+        queueSync(3000);
+      }
     }
   }
   function onAttempt(a: Attempt) {
@@ -899,29 +912,9 @@ export default function App() {
     setBusy(true);
     try {
       await sync.testConfig(config);
-      const d = stateRef.current!;
-      const pristine =
-        d.pages.every(
-          (p) => p.updatedAt - p.createdAt < 2000 && !p.versions.length,
-        ) &&
-        !d.tasks.length &&
-        !d.cards.length &&
-        !d.collections.length &&
-        !d.attachments.length;
-      if (pristine && (await sync.remoteExists(config))) {
-        // A fresh device: take the synced notes instead of adding a second
-        // copy of the starter pages.
-        update((w) => ({
-          ...w,
-          pages: [],
-          deleted: {
-            ...(w.deleted || {}),
-            ...Object.fromEntries(w.pages.map((p) => [p.id, Date.now()])),
-          },
-        }));
-      }
       await sync.setConfig(config);
       await sync.setState({ sha: "", lastSync: 0, dirty: true });
+      await sync.clearBase();
       syncOn.current = true;
       setSyncInfo({ repo: config.repo, status: "", error: false, at: 0 });
       setSyncForm({ repo: "", token: "" });
@@ -1038,7 +1031,12 @@ export default function App() {
         )
       )
         return;
+      restoring.current = true;
+      syncEpoch.current++;
+      if (syncTimer.current) clearTimeout(syncTimer.current);
       await flush();
+      prepared.data = prepareRestore(stateRef.current!, prepared.data);
+      if (syncOn.current) await sync.markDirty();
       revision.current = await restoreBackup(
         prepared.data,
         prepared.files,
@@ -1051,11 +1049,16 @@ export default function App() {
       setTabs([]);
       setView("home");
       channel.current?.postMessage({ revision: revision.current });
+      if (syncOn.current) {
+        await sync.markDirty();
+        queueSync(1000);
+      }
       notify("Workspace restored");
     } catch (e) {
       notify(e instanceof Error ? e.message : "Could not restore backup");
     } finally {
       setBusy(false);
+      restoring.current = false;
       if (backupInput.current) backupInput.current.value = "";
     }
   }

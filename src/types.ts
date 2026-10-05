@@ -77,6 +77,7 @@ export type Workspace = {
   collections: Collection[];
   study?: Study;
   deleted?: Record<string, number>;
+  restored?: Record<string, number>;
   settings: {
     theme: "system" | "light" | "dark" | "sepia";
     font: "sans" | "serif";
