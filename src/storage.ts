@@ -384,3 +384,11 @@ export async function restoreBackup(
   remember(data);
   return revision + 1;
 }
+/** True when a ZIP is a Slate backup or page pack (it has workspace.json). */
+export async function isSlateZip(file: File) {
+  try {
+    return !!(await JSZip.loadAsync(file)).file("workspace.json");
+  } catch {
+    return false;
+  }
+}

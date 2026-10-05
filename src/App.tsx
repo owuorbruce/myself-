@@ -74,6 +74,7 @@ import {
   readBackup,
   restoreBackup,
   pageMarkdown,
+  isSlateZip,
 } from "./storage";
 import {
   newPage,
@@ -853,7 +854,12 @@ export default function App() {
       setBusy(false);
     }
   }
-  async function importNotionZip(file: File) {
+  async function importNotionZip(file: File): Promise<void> {
+    if (await isSlateZip(file)) {
+      // A Slate file picked with the Notion button: add its pages instead.
+      if (notionInput.current) notionInput.current.value = "";
+      return addPagesFile(file);
+    }
     setBusy(true);
     try {
       const { importNotion } = await import("./notion");
@@ -1023,7 +1029,11 @@ export default function App() {
       setBusy(false);
     }
   }
-  async function addPagesFile(file: File) {
+  async function addPagesFile(file: File): Promise<void> {
+    if (!(await isSlateZip(file))) {
+      if (pagesInput.current) pagesInput.current.value = "";
+      return importNotionZip(file);
+    }
     setBusy(true);
     try {
       const prepared = await readBackup(file);
