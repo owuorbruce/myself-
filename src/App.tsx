@@ -23,6 +23,8 @@ import {
   Maximize2,
   Minimize2,
   PanelRight,
+  PanelLeftClose,
+  PanelLeftOpen,
   Link2,
   Paperclip,
   Check,
@@ -168,6 +170,13 @@ export default function App() {
   const [tabs, setTabs] = useState<string[]>([]);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [sidebar, setSidebar] = useState(false);
+  const [navCollapsed, setNavCollapsed] = useState(() => localStorage.getItem("slate-nav-collapsed") === "true");
+  const [chatWidth, setChatWidth] = useState(() => {
+    const saved = Number(localStorage.getItem("slate-chat-width"));
+    return Number.isFinite(saved) && saved >= 360 ? Math.min(saved, 720) : 440;
+  });
+  useEffect(() => { localStorage.setItem("slate-nav-collapsed", String(navCollapsed)); }, [navCollapsed]);
+  useEffect(() => { localStorage.setItem("slate-chat-width", String(chatWidth)); }, [chatWidth]);
   const [focus, setFocus] = useState(false);
   const [panel, setPanel] = useState<"outline" | "ai" | "history" | null>(null);
   const [split, setSplit] = useState("");
@@ -1236,7 +1245,7 @@ export default function App() {
   return (
     <div
       className={
-        "app " + (focus ? "focus " : "") + (sidebar ? "show-sidebar" : "")
+        "app " + (focus ? "focus " : "") + (sidebar ? "show-sidebar " : "") + (navCollapsed ? "nav-collapsed" : "")
       }
     >
       {sidebar && (
@@ -1247,6 +1256,7 @@ export default function App() {
         />
       )}
       <aside className="sidebar">
+        <button className="nav-collapse" aria-label="Collapse navigation" title="Collapse navigation" onClick={() => setNavCollapsed(true)}><PanelLeftClose size={18} /></button>
         <button className="brand" onClick={() => navigate("home")}>
           <span className="brand-mark">S</span>
           <span>
@@ -1344,6 +1354,7 @@ export default function App() {
       </aside>
       <main className="main">
         <header className="topbar">
+          {navCollapsed && <button className="nav-expand" aria-label="Expand navigation" title="Expand navigation" onClick={() => setNavCollapsed(false)}><PanelLeftOpen size={20} /></button>}
           <button
             className="mobile-menu"
             aria-label="Open navigation"
@@ -1949,7 +1960,12 @@ export default function App() {
                 </div>
               )}
               {panel && !split && (
-                <aside className="context-panel">
+                <aside className={"context-panel " + (panel === "ai" ? "ai-chat-panel" : "")} style={panel === "ai" ? { width: chatWidth } : undefined}>
+                  {panel === "ai" && <div className="chat-resize" role="separator" tabIndex={0} aria-label="Chat panel width" aria-orientation="vertical" aria-valuemin={360} aria-valuemax={720} aria-valuenow={chatWidth}
+                    onKeyDown={(e) => { if (["ArrowLeft", "ArrowRight", "Home", "End"].includes(e.key)) { e.preventDefault(); setChatWidth(w => e.key === "Home" ? 360 : e.key === "End" ? 720 : Math.max(360, Math.min(720, w + (e.key === "ArrowLeft" ? 20 : -20)))); } }}
+                    onPointerDown={(e) => { e.preventDefault(); e.currentTarget.setPointerCapture(e.pointerId); }}
+                    onPointerMove={(e) => { if (e.currentTarget.hasPointerCapture(e.pointerId)) { const right = e.currentTarget.parentElement!.getBoundingClientRect().right; setChatWidth(Math.max(360, Math.min(720, right - e.clientX))); } }}
+                    onPointerUp={(e) => { if (e.currentTarget.hasPointerCapture(e.pointerId)) e.currentTarget.releasePointerCapture(e.pointerId); }} /> }
                   <div className="panel-heading">
                     <h3>
                       {panel === "ai"
@@ -2067,7 +2083,7 @@ export default function App() {
                     </>
                   ) : (
                     <>
-                      <p>Ask about the notes you choose, using your ChatGPT plan.</p>
+                      <details className="chat-context"><summary>Note context &amp; action</summary>
                       <label>
                         Use
                         <select
@@ -2107,18 +2123,12 @@ export default function App() {
                           ))}
                         </select>
                       </label>
-                      <label>
-                        Your question
-                        <textarea
-                          rows={3}
-                          placeholder="What would you like to explore?"
-                          value={aiQuestion}
-                          onChange={(e) => setAiQuestion(e.target.value)}
-                        />
-                      </label>
+                      </details>
                       <ChatGPTPanel
                         key={page.id}
                         prompt={aiPrompt()}
+                        question={aiQuestion}
+                        onQuestionChange={setAiQuestion}
                         action={aiAction}
                         onExport={() => void backup()}
                         onSave={(answer) => {
