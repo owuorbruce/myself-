@@ -5,19 +5,128 @@ import { generateHTML } from "@tiptap/core";
 import { extensions } from "./extensions";
 import { seed, type Workspace, type Page } from "./types";
 import { validateWorkspace } from "./validation.mjs";
-const db = openDB("slate-workspace", 1, {
-  upgrade(db) {
-    db.createObjectStore("workspace");
-    db.createObjectStore("files");
+type Meta = { revision: number; split?: boolean; data: Workspace };
+type PageBody = { content: Page["content"]; plainText: string };
+const STORES = ["workspace", "pages", "versions", "attachText"] as const;
+const db = openDB("slate-workspace", 2, {
+  upgrade(db, oldVersion) {
+    if (oldVersion < 1) {
+      db.createObjectStore("workspace");
+      db.createObjectStore("files");
+    }
+    if (oldVersion < 2) {
+      // Pages, their history and extracted attachment text live in their
+      // own records so a keystroke only rewrites the page being edited.
+      db.createObjectStore("pages");
+      db.createObjectStore("versions");
+      db.createObjectStore("attachText");
+      db.createObjectStore("local");
+    }
   },
 });
-export async function load() {
-  const saved = await (await db).get("workspace", "main");
-  return saved || { revision: 0, data: seed() };
+/** What was last written, by reference, so saves only touch what changed. */
+const written = {
+  pages: new Map<
+    string,
+    { content: unknown; plainText: string; versions: unknown }
+  >(),
+  text: new Map<string, string>(),
+};
+function remember(data: Workspace) {
+  written.pages = new Map(
+    data.pages.map((p) => [
+      p.id,
+      { content: p.content, plainText: p.plainText, versions: p.versions },
+    ]),
+  );
+  written.text = new Map(data.attachments.map((a) => [a.id, a.text]));
+}
+function metaOf(data: Workspace): Workspace {
+  return {
+    ...data,
+    pages: data.pages.map((p) => ({
+      ...p,
+      content: { type: "doc" },
+      plainText: "",
+      versions: [],
+    })),
+    attachments: data.attachments.map((a) => ({ ...a, text: "" })),
+  };
+}
+/** Fill in fields added in later versions so older data keeps working. */
+export function normalize(data: Workspace): Workspace {
+  return {
+    ...data,
+    study: data.study || { items: [], days: [] },
+    settings: {
+      ...data.settings,
+      theme: data.settings?.theme || "system",
+      font: data.settings?.font || "sans",
+      wide: !!data.settings?.wide,
+    },
+  };
+}
+export async function load(): Promise<{
+  revision: number;
+  data: Workspace;
+  migrate: boolean;
+}> {
+  const d = await db;
+  const saved = (await d.get("workspace", "main")) as Meta | undefined;
+  if (!saved) {
+    written.pages.clear();
+    written.text.clear();
+    return { revision: 0, data: seed(), migrate: false };
+  }
+  if (!saved.split) {
+    // A workspace from before split storage. Leave the "written" maps empty
+    // so the next save stores every page in its own record.
+    written.pages.clear();
+    written.text.clear();
+    return {
+      revision: saved.revision,
+      data: normalize(saved.data),
+      migrate: true,
+    };
+  }
+  const tx = d.transaction(["pages", "versions", "attachText"]);
+  const [pageKeys, pageBodies, versionKeys, versionLists, textKeys, texts] =
+    await Promise.all([
+      tx.objectStore("pages").getAllKeys(),
+      tx.objectStore("pages").getAll(),
+      tx.objectStore("versions").getAllKeys(),
+      tx.objectStore("versions").getAll(),
+      tx.objectStore("attachText").getAllKeys(),
+      tx.objectStore("attachText").getAll(),
+    ]);
+  const bodies = new Map(
+    pageKeys.map((k, i) => [String(k), pageBodies[i] as PageBody]),
+  );
+  const versions = new Map(
+    versionKeys.map((k, i) => [String(k), versionLists[i] as Page["versions"]]),
+  );
+  const text = new Map(textKeys.map((k, i) => [String(k), String(texts[i])]));
+  const data = normalize({
+    ...saved.data,
+    pages: saved.data.pages.map((p) => ({
+      ...p,
+      content: bodies.get(p.id)?.content || { type: "doc", content: [] },
+      plainText: bodies.get(p.id)?.plainText || "",
+      versions: versions.get(p.id) || [],
+    })),
+    attachments: saved.data.attachments.map((a) => ({
+      ...a,
+      text: text.get(a.id) || "",
+    })),
+  });
+  remember(data);
+  return { revision: saved.revision, data, migrate: false };
 }
 export async function save(data: Workspace, revision: number) {
-  const tx = (await db).transaction("workspace", "readwrite");
-  const previous = await tx.store.get("main");
+  const tx = (await db).transaction([...STORES], "readwrite");
+  const previous = (await tx.objectStore("workspace").get("main")) as
+    | Meta
+    | undefined;
   if ((previous?.revision || 0) !== revision) {
     tx.abort();
     await tx.done.catch(() => {});
@@ -25,8 +134,42 @@ export async function save(data: Workspace, revision: number) {
       "This workspace changed in another tab. Export your unsaved work, then reload this tab.",
     );
   }
-  await tx.store.put({ revision: revision + 1, data }, "main");
+  const pages = tx.objectStore("pages"),
+    versions = tx.objectStore("versions"),
+    text = tx.objectStore("attachText");
+  const live = new Set<string>();
+  for (const p of data.pages) {
+    live.add(p.id);
+    const before = written.pages.get(p.id);
+    if (
+      !before ||
+      before.content !== p.content ||
+      before.plainText !== p.plainText
+    )
+      void pages.put({ content: p.content, plainText: p.plainText }, p.id);
+    if (!before || before.versions !== p.versions)
+      void versions.put(p.versions, p.id);
+  }
+  for (const id of written.pages.keys())
+    if (!live.has(id)) {
+      void pages.delete(id);
+      void versions.delete(id);
+    }
+  const files = new Set<string>();
+  for (const a of data.attachments) {
+    files.add(a.id);
+    if (written.text.get(a.id) !== a.text) void text.put(a.text, a.id);
+  }
+  for (const id of written.text.keys())
+    if (!files.has(id)) void text.delete(id);
+  void tx
+    .objectStore("workspace")
+    .put(
+      { revision: revision + 1, split: true, data: metaOf(data) } as Meta,
+      "main",
+    );
   await tx.done;
+  remember(data);
   return revision + 1;
 }
 export async function putFile(id: string, file: Blob) {
@@ -45,6 +188,18 @@ export async function removeFile(id: string) {
   )
     await tx.objectStore("files").delete(id);
   await tx.done;
+}
+/** Device-only settings (like a sync token) that never go into backups. */
+export async function getLocal<T>(key: string): Promise<T | undefined> {
+  return (await db).get("local", key);
+}
+export async function setLocal(key: string, value: unknown) {
+  const d = await db;
+  if (value === undefined) await d.delete("local", key);
+  else await d.put("local", value, key);
+}
+export async function fileIds() {
+  return (await (await db).getAllKeys("files")).map(String);
 }
 export function download(blob: Blob, name: string) {
   const url = URL.createObjectURL(blob);
@@ -106,6 +261,37 @@ markdown.addRule("callout", {
       .join("\n") +
     "\n\n",
 });
+markdown.addRule("blank", {
+  filter: (n) => (n as HTMLElement).hasAttribute?.("data-blank"),
+  replacement: (_c, n) => `{{${(n as HTMLElement).getAttribute("data-answer")}}}`,
+});
+markdown.addRule("reveal", {
+  filter: (n) => (n as HTMLElement).hasAttribute?.("data-reveal"),
+  replacement: (_c, node) => {
+    const el = node as HTMLElement;
+    const question = el.querySelector("summary")?.textContent || "";
+    const answer = markdown
+      .turndown(el.querySelector("[data-answer]")?.innerHTML || "")
+      .trim();
+    return (
+      "\n\n**Q: " +
+      question +
+      "**\n\n" +
+      answer
+        .split("\n")
+        .map((l) => "> " + l)
+        .join("\n") +
+      "\n\n"
+    );
+  },
+});
+markdown.addRule("labelImage", {
+  filter: (n) => (n as HTMLElement).hasAttribute?.("data-label-image"),
+  replacement: (_c, node) =>
+    "\n\n*Labelled image. " +
+    ((node as HTMLElement).querySelector("figcaption")?.textContent || "") +
+    "*\n\n",
+});
 export function pageMarkdown(page: Page) {
   return `# ${page.title}\n\n${markdown.turndown(generateHTML(page.content, extensions))}\n`;
 }
@@ -140,7 +326,7 @@ export async function readBackup(
   const raw = await entry.async("string");
   if (raw.length > 30 * 1024 * 1024)
     throw new Error("Workspace data is too large.");
-  const data = validateWorkspace(JSON.parse(raw)) as Workspace;
+  const data = normalize(validateWorkspace(JSON.parse(raw)) as Workspace);
   const files = new Map<string, Blob>();
   let total = 0;
   for (const attachment of data.attachments) {
@@ -166,8 +352,10 @@ export async function restoreBackup(
   files: Map<string, Blob>,
   revision: number,
 ) {
-  const tx = (await db).transaction(["workspace", "files"], "readwrite");
-  const old = await tx.objectStore("workspace").get("main");
+  const tx = (await db).transaction([...STORES, "files"], "readwrite");
+  const old = (await tx.objectStore("workspace").get("main")) as
+    | Meta
+    | undefined;
   if ((old?.revision || 0) !== revision) {
     tx.abort();
     await tx.done.catch(() => {});
@@ -175,11 +363,24 @@ export async function restoreBackup(
       "Another tab changed your workspace. Reload before restoring.",
     );
   }
-  await tx.objectStore("files").clear();
-  for (const [id, blob] of files) await tx.objectStore("files").put(blob, id);
-  await tx
+  for (const name of ["files", "pages", "versions", "attachText"] as const)
+    void tx.objectStore(name).clear();
+  for (const [id, blob] of files) void tx.objectStore("files").put(blob, id);
+  for (const p of data.pages) {
+    void tx
+      .objectStore("pages")
+      .put({ content: p.content, plainText: p.plainText }, p.id);
+    void tx.objectStore("versions").put(p.versions, p.id);
+  }
+  for (const a of data.attachments)
+    void tx.objectStore("attachText").put(a.text, a.id);
+  void tx
     .objectStore("workspace")
-    .put({ data, revision: revision + 1 }, "main");
+    .put(
+      { data: metaOf(data), revision: revision + 1, split: true } as Meta,
+      "main",
+    );
   await tx.done;
+  remember(data);
   return revision + 1;
 }

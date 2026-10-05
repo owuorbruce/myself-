@@ -34,9 +34,32 @@ import {
   FolderOpen,
   GripVertical,
   CheckCircle2,
+  GraduationCap,
+  Flame,
+  Cloud,
+  CloudOff,
+  RefreshCw,
+  ScanText,
+  Target,
+  Sparkles,
 } from "lucide-react";
 import { useRegisterSW } from "virtual:pwa-register/react";
 import NoteEditor from "./Editor";
+import { LearnView, ReviewSession } from "./Learn";
+import { buildLesson, lessonStats } from "./lesson";
+import {
+  recordAttempt,
+  reviewCard as scheduleCard,
+  dailyQueue,
+  weakQueue,
+  weakSpots,
+  studyOf,
+  type Attempt,
+  type Question,
+  type Rating,
+} from "./study";
+import { schedule, label as intervalLabel, streak } from "./grading.mjs";
+import * as sync from "./sync";
 import Collections from "./Collections";
 import {
   load,
@@ -52,6 +75,8 @@ import {
 } from "./storage";
 import {
   newPage,
+  examplePage,
+  EXAMPLE_TITLE,
   textDoc,
   uid,
   plain,
@@ -165,7 +190,30 @@ export default function App() {
   );
   const [cardIndex, setCardIndex] = useState(0);
   const [revealed, setRevealed] = useState(false);
-  const [studyTab, setStudyTab] = useState<"cards" | "markers">("cards");
+  const [studyTab, setStudyTab] = useState<
+    "today" | "cards" | "weak" | "markers"
+  >("today");
+  const [learnId, setLearnId] = useState("");
+  const [session, setSession] = useState<{
+    title: string;
+    questions: Question[];
+  } | null>(null);
+  const [systemDark, setSystemDark] = useState(
+    () => window.matchMedia?.("(prefers-color-scheme: dark)").matches ?? false,
+  );
+  const [syncInfo, setSyncInfo] = useState({
+    repo: "",
+    status: "",
+    error: false,
+    at: 0,
+  });
+  const [syncForm, setSyncForm] = useState({ repo: "", token: "" });
+  const [ocrJobs, setOcrJobs] = useState<Record<string, string>>({});
+  const [textView, setTextView] = useState<string | null>(null);
+  const notionInput = useRef<HTMLInputElement>(null);
+  const syncOn = useRef(false),
+    syncing = useRef(false),
+    syncTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [busy, setBusy] = useState(false);
   const [installed, setInstalled] = useState<BeforeInstallPromptEvent | null>(
     null,
@@ -235,12 +283,82 @@ export default function App() {
   function update(fn: (d: Workspace) => Workspace) {
     if (!stateRef.current) return;
     const next = fn(stateRef.current);
+    if (next === stateRef.current) return;
     stateRef.current = next;
     setData(next);
     pending.current = true;
     setStatus(errorRef.current ? "Save failed" : "Saving…");
     if (timer.current) clearTimeout(timer.current);
     timer.current = setTimeout(() => void flush().catch(() => {}), 250);
+    if (syncOn.current) {
+      void sync.markDirty();
+      queueSync(20000);
+    }
+  }
+  function queueSync(delay: number) {
+    if (syncTimer.current) clearTimeout(syncTimer.current);
+    syncTimer.current = setTimeout(() => void runSync(), delay);
+  }
+  async function runSync(manual = false) {
+    if (syncing.current) {
+      if (manual) notify("A sync is already running.");
+      return;
+    }
+    if (!navigator.onLine) {
+      setSyncInfo((i) => ({ ...i, status: "Waiting for a connection" }));
+      return;
+    }
+    const config = await sync.getConfig();
+    if (!config || !stateRef.current) return;
+    syncing.current = true;
+    if (syncTimer.current) clearTimeout(syncTimer.current);
+    setSyncInfo((i) => ({ ...i, status: "Syncing…", error: false }));
+    try {
+      await flush();
+      const before = stateRef.current;
+      const result = await sync.syncNow(config, before);
+      const now = stateRef.current;
+      const edited = now !== before;
+      if (result.changed || edited) {
+        const next = edited
+          ? sync.rebaseEdits(before, now, result.data)
+          : result.data;
+        stateRef.current = next;
+        setData(next);
+        pending.current = true;
+        await flush();
+        if (edited) {
+          await sync.markDirty();
+          queueSync(3000);
+        }
+      }
+      setSyncInfo((i) => ({
+        ...i,
+        status: "Synced",
+        error: false,
+        at: Date.now(),
+      }));
+      if (result.conflicts.length)
+        notify(
+          `Edited on two devices: ${result.conflicts.join(", ")}. The other device's version was kept as a copy next to it.`,
+        );
+      else if (manual) notify("Synced with GitHub");
+    } catch (e) {
+      const m = e instanceof Error ? e.message : "Sync failed";
+      setSyncInfo((i) => ({ ...i, status: m, error: true }));
+      if (manual) notify(m);
+    } finally {
+      syncing.current = false;
+    }
+  }
+  function onAttempt(a: Attempt) {
+    update((d) => recordAttempt(d, a));
+  }
+  function onReviewCard(cardId: string, rating: Rating) {
+    update((d) => {
+      const card = d.cards.find((c) => c.id === cardId);
+      return card ? scheduleCard(d, card, rating) : d;
+    });
   }
   useEffect(() => {
     let active = true;
@@ -251,13 +369,34 @@ export default function App() {
         revision.current = result.revision;
         setData(result.data);
         setStatus("Saved on this device");
-        if (result.revision === 0) {
+        if (result.revision === 0 || result.migrate) {
           pending.current = true;
           await flush();
         }
+        const config = await sync.getConfig();
+        if (config) {
+          syncOn.current = true;
+          setSyncInfo((i) => ({ ...i, repo: config.repo }));
+          void runSync();
+        }
       })
       .catch((e) => setError("Could not open this workspace: " + e.message));
-    const change = () => setOnline(navigator.onLine);
+    const change = () => {
+      setOnline(navigator.onLine);
+      if (navigator.onLine && syncOn.current) queueSync(1000);
+    };
+    const hidden = () => {
+      if (document.visibilityState === "hidden" && syncOn.current)
+        void runSync();
+    };
+    document.addEventListener("visibilitychange", hidden);
+    const periodic = setInterval(() => {
+      if (document.visibilityState === "visible" && syncOn.current)
+        void runSync();
+    }, 300000);
+    const media = window.matchMedia?.("(prefers-color-scheme: dark)");
+    const scheme = () => setSystemDark(!!media?.matches);
+    media?.addEventListener?.("change", scheme);
     const before = (e: BeforeUnloadEvent) => {
       if (pending.current) {
         e.preventDefault();
@@ -279,6 +418,9 @@ export default function App() {
       );
     return () => {
       active = false;
+      document.removeEventListener("visibilitychange", hidden);
+      clearInterval(periodic);
+      media?.removeEventListener?.("change", scheme);
       channel.current?.close();
       window.removeEventListener("online", change);
       window.removeEventListener("offline", change);
@@ -322,10 +464,24 @@ export default function App() {
     const t = setTimeout(() => setToast(""), 5000);
     return () => clearTimeout(t);
   }, [toast]);
+  const theme =
+    !data || data.settings.theme === "system"
+      ? systemDark
+        ? "dark"
+        : "light"
+      : data.settings.theme;
   useEffect(() => {
-    if (!data) return;
-    document.documentElement.dataset.theme = data.settings.theme;
-  }, [data?.settings.theme]);
+    document.documentElement.dataset.theme = theme;
+    document
+      .querySelector('meta[name="theme-color"]')
+      ?.setAttribute("content", theme === "dark" ? "#17201b" : "#1f3531");
+  }, [theme]);
+  function toggleTheme() {
+    update((d) => ({
+      ...d,
+      settings: { ...d.settings, theme: theme === "dark" ? "light" : "dark" },
+    }));
+  }
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
@@ -433,7 +589,9 @@ export default function App() {
     const ids = descendants(data.pages, id);
     update((d) => ({
       ...d,
-      pages: d.pages.map((p) => (ids.has(p.id) ? { ...p, trashed: true } : p)),
+      pages: d.pages.map((p) =>
+        ids.has(p.id) ? { ...p, trashed: true, updatedAt: Date.now() } : p,
+      ),
     }));
     setTabs((t) => t.filter((x) => !ids.has(x)));
     if (ids.has(pageId)) navigate("home");
@@ -449,7 +607,9 @@ export default function App() {
     }
     update((d) => ({
       ...d,
-      pages: d.pages.map((p) => (ids.has(p.id) ? { ...p, trashed: false } : p)),
+      pages: d.pages.map((p) =>
+        ids.has(p.id) ? { ...p, trashed: false, updatedAt: Date.now() } : p,
+      ),
     }));
   }
   function movePage(id: string, parentId: string | null) {
@@ -568,6 +728,10 @@ export default function App() {
           continue;
         }
         await putFile(id, file);
+        const scanned =
+          (file.type === "application/pdf" || /\.pdf$/i.test(file.name)) &&
+          (await import("./pdf")).looksScanned(text);
+        const photo = /^image\/(png|jpeg|webp|gif)$/.test(file.type);
         update((d) => ({
           ...d,
           attachments: [
@@ -602,6 +766,11 @@ export default function App() {
           reader.readAsDataURL(file);
         }
         notify("File attached");
+        if (
+          (scanned || photo) &&
+          stateRef.current?.settings.ocr !== false
+        )
+          void readText(id);
       } catch {
         notify(
           "Could not save the attachment. Check available device storage.",
@@ -609,6 +778,159 @@ export default function App() {
       }
     }
     if (attachmentInput.current) attachmentInput.current.value = "";
+  }
+  async function readText(id: string, auto = true) {
+    const a = stateRef.current?.attachments.find((x) => x.id === id);
+    const blob = await getFile(id);
+    if (!a || !blob || ocrJobs[id]) return;
+    const status = (text: string) => setOcrJobs((j) => ({ ...j, [id]: text }));
+    status("Reading text…");
+    try {
+      const ocr = await import("./ocr");
+      const text =
+        a.type === "application/pdf" || /\.pdf$/i.test(a.name)
+          ? await ocr.recognizePdf(blob, (i, n) =>
+              status(`Reading page ${i} of ${n}…`),
+            )
+          : await ocr.recognize(blob, (p) =>
+              status(`Reading text… ${Math.round(p * 100)}%`),
+            );
+      update((d) => ({
+        ...d,
+        attachments: d.attachments.map((x) =>
+          x.id === id ? { ...x, text: text.slice(0, 1000000) } : x,
+        ),
+      }));
+      if (text.trim()) notify(`Read the text in ${a.name}. It's searchable now.`);
+      else if (!auto) notify(`Couldn't find any text in ${a.name}.`);
+      if (!auto && text.trim()) setTextView(id);
+    } catch {
+      notify(
+        navigator.onLine
+          ? `Couldn't read text from ${a.name}.`
+          : "Text reading needs to download once while you're online. After that it works offline.",
+      );
+    } finally {
+      setOcrJobs((j) => {
+        const n = { ...j };
+        delete n[id];
+        return n;
+      });
+    }
+  }
+  async function prepareOcr() {
+    setBusy(true);
+    try {
+      for (const name of [
+        "worker.min.js",
+        "tesseract-core-simd-lstm.wasm.js",
+        "tesseract-core-lstm.wasm.js",
+        "eng.traineddata.gz",
+      ]) {
+        const res = await fetch(new URL("ocr/" + name, location.href));
+        if (!res.ok) throw new Error();
+        await res.arrayBuffer();
+      }
+      notify("Text reading is downloaded and works offline now.");
+    } catch {
+      notify("Couldn't download text reading. Check your connection.");
+    } finally {
+      setBusy(false);
+    }
+  }
+  async function importNotionZip(file: File) {
+    setBusy(true);
+    try {
+      const { importNotion } = await import("./notion");
+      const result = await importNotion(file, notify);
+      for (const f of result.files) await putFile(f.attachment.id, f.blob);
+      const root = newPage(
+        "Imported from Notion",
+        null,
+        textDoc(
+          `Imported ${result.pages.length} pages on ${new Date().toLocaleDateString()}. Move them anywhere you like.`,
+        ),
+      );
+      root.icon = "📦";
+      const imported = result.pages.map((p) =>
+        p.parentId ? p : { ...p, parentId: root.id },
+      );
+      update((d) => ({
+        ...d,
+        pages: [...d.pages, root, ...imported],
+        collections: [...d.collections, ...result.collections],
+        attachments: [
+          ...d.attachments,
+          ...result.files.map((f) => f.attachment),
+        ],
+      }));
+      setExpanded((e) => new Set([...e, root.id]));
+      openPage(root.id);
+      notify(
+        `Imported ${result.pages.length} pages` +
+          (result.collections.length
+            ? ` and ${result.collections.length} database${result.collections.length === 1 ? "" : "s"} (see Collections)`
+            : "") +
+          "." +
+          (result.skipped
+            ? ` ${result.skipped} file${result.skipped === 1 ? " was" : "s were"} over 25 MB and skipped.`
+            : ""),
+      );
+    } catch (e) {
+      notify(e instanceof Error ? e.message : "Couldn't import that export.");
+    } finally {
+      setBusy(false);
+      if (notionInput.current) notionInput.current.value = "";
+    }
+  }
+  async function connectSync() {
+    const config = {
+      repo: syncForm.repo
+        .trim()
+        .replace(/^https?:\/\/github\.com\//, "")
+        .replace(/\.git$/, "")
+        .replace(/\/$/, ""),
+      token: syncForm.token.trim(),
+    };
+    if (!config.repo || !config.token) {
+      notify("Enter the repository and the token.");
+      return;
+    }
+    setBusy(true);
+    try {
+      await sync.testConfig(config);
+      const d = stateRef.current!;
+      const pristine =
+        d.pages.every(
+          (p) => p.updatedAt - p.createdAt < 2000 && !p.versions.length,
+        ) &&
+        !d.tasks.length &&
+        !d.cards.length &&
+        !d.collections.length &&
+        !d.attachments.length;
+      if (pristine && (await sync.remoteExists(config))) {
+        // A fresh device: take the synced notes instead of adding a second
+        // copy of the starter pages.
+        update((w) => ({
+          ...w,
+          pages: [],
+          deleted: {
+            ...(w.deleted || {}),
+            ...Object.fromEntries(w.pages.map((p) => [p.id, Date.now()])),
+          },
+        }));
+      }
+      await sync.setConfig(config);
+      await sync.setState({ sha: "", lastSync: 0, dirty: true });
+      syncOn.current = true;
+      setSyncInfo({ repo: config.repo, status: "", error: false, at: 0 });
+      setSyncForm({ repo: "", token: "" });
+      await runSync(true);
+    } catch (e) {
+      notify(e instanceof Error ? e.message : "Couldn't connect to GitHub.");
+    } finally {
+      setBusy(false);
+    }
   }
   async function openAttachment(id: string) {
     const a = data?.attachments.find((x) => x.id === id);
@@ -757,6 +1079,35 @@ export default function App() {
     }
     if (noteInput.current) noteInput.current.value = "";
   }
+  function startLearn(id: string) {
+    void flush().catch(() => {});
+    setLearnId(id);
+    setView("learn");
+    setSidebar(false);
+    setFocus(false);
+  }
+  function startDaily() {
+    if (!stateRef.current) return;
+    const questions = dailyQueue(stateRef.current);
+    if (!questions.length) {
+      notify("Nothing is due. Teach yourself a page or add flashcards.");
+      return;
+    }
+    setSession({ title: "Today's review", questions });
+    setStudyTab("today");
+    navigate("study");
+  }
+  function startWeak() {
+    if (!stateRef.current) return;
+    const questions = weakQueue(stateRef.current);
+    if (!questions.length) {
+      notify("No weak spots yet. Miss something and it'll show up here.");
+      return;
+    }
+    setSession({ title: "Weak spots", questions });
+    setStudyTab("weak");
+    navigate("study");
+  }
   if (!data)
     return (
       <div className="boot">
@@ -775,6 +1126,18 @@ export default function App() {
       (!c.pageId || pages.some((p) => p.id === c.pageId)),
   );
   const reviewCard = dueCards[cardIndex % dueCards.length];
+  const dueNow = dailyQueue(data, 99).length;
+  const weak = weakSpots(data);
+  const days = streak(studyOf(data).days);
+  const studiedToday = studyOf(data).days.includes(
+    new Date().toLocaleDateString("en-CA"),
+  );
+  const lessonLabel = (p: Page) => {
+    const st = lessonStats(buildLesson(p, data.cards));
+    return st.questions
+      ? `${st.sections} section${st.sections === 1 ? "" : "s"} · ${st.questions} question${st.questions === 1 ? "" : "s"}`
+      : `${st.sections} section${st.sections === 1 ? "" : "s"} · add bold terms or blanks for questions`;
+  };
   const pageFiles = data.attachments.filter((a) => a.pageId === pageId);
   const navItems: [View, string, typeof Home][] = [
     ["home", "Home", Home],
@@ -812,6 +1175,8 @@ export default function App() {
         setModal("link");
       }}
       onOutline={() => setPanel(panel === "outline" ? null : "outline")}
+      onAttempt={onAttempt}
+      onLearn={() => startLearn(p.id)}
     />
   );
   return (
@@ -853,9 +1218,7 @@ export default function App() {
                 data.tasks.filter((t) => !t.done).length > 0 && (
                   <small>{data.tasks.filter((t) => !t.done).length}</small>
                 )}
-              {v === "study" && dueCards.length > 0 && (
-                <small>{dueCards.length}</small>
-              )}
+              {v === "study" && dueNow > 0 && <small>{dueNow}</small>}
             </button>
           ))}
         </nav>
@@ -914,17 +1277,9 @@ export default function App() {
             </span>
             <button
               aria-label="Toggle light or dark theme"
-              onClick={() =>
-                update((d) => ({
-                  ...d,
-                  settings: {
-                    ...d.settings,
-                    theme: d.settings.theme === "dark" ? "light" : "dark",
-                  },
-                }))
-              }
+              onClick={toggleTheme}
             >
-              {data.settings.theme === "dark" ? (
+              {theme === "dark" ? (
                 <Sun size={17} />
               ) : (
                 <Moon size={17} />
@@ -960,6 +1315,37 @@ export default function App() {
               <span className="offline-badge">Offline ready</span>
             )}
             {!online && <span className="offline-badge">Offline</span>}
+            {syncInfo.repo && (
+              <button
+                className={"sync-status " + (syncInfo.error ? "error" : "")}
+                title={
+                  syncInfo.error
+                    ? syncInfo.status
+                    : syncInfo.at
+                      ? "Synced " + new Date(syncInfo.at).toLocaleTimeString()
+                      : "Sync with GitHub"
+                }
+                aria-label="Sync now"
+                onClick={() => void runSync(true)}
+              >
+                {syncInfo.error ? (
+                  <CloudOff size={16} />
+                ) : syncInfo.status === "Syncing…" ? (
+                  <RefreshCw size={16} className="spin" />
+                ) : (
+                  <Cloud size={16} />
+                )}
+                <span>{syncInfo.error ? "Sync issue" : syncInfo.status || "Sync"}</span>
+              </button>
+            )}
+            <button
+              className="theme-toggle"
+              aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+              title={theme === "dark" ? "Light mode" : "Dark mode"}
+              onClick={toggleTheme}
+            >
+              {theme === "dark" ? <Sun size={17} /> : <Moon size={17} />}
+            </button>
             {installed && (
               <button
                 onClick={async () => {
@@ -1173,12 +1559,17 @@ export default function App() {
                   <br />A little more knowledge.
                 </h2>
                 <p>
-                  {dueCards.length
-                    ? `${dueCards.length} flashcards are ready for review.`
-                    : "Turn your notes into flashcards and keep the important ideas close."}
+                  {days > 0 && (
+                    <span className="streak-inline">
+                      <Flame size={15} /> {days} day streak.{" "}
+                    </span>
+                  )}
+                  {dueNow
+                    ? `${Math.min(dueNow, 15)} quick questions are ready.`
+                    : "Open a page and press Teach me to learn it bit by bit."}
                 </p>
-                <button onClick={() => navigate("study")}>
-                  {dueCards.length ? "Review flashcards" : "Open study space"}
+                <button onClick={() => (dueNow ? startDaily() : navigate("study"))}>
+                  {dueNow ? "Start today's review" : "Open study space"}
                   <ChevronRight size={17} />
                 </button>
               </div>
@@ -1257,6 +1648,13 @@ export default function App() {
                     <PageGlyph icon={page.icon} size={39} />
                   </button>
                   <div>
+                    <button
+                      className="teach-button"
+                      title="Teach me this page"
+                      onClick={() => startLearn(page.id)}
+                    >
+                      <GraduationCap size={18} /> Teach me
+                    </button>
                     <button
                       title="Favorite page"
                       aria-label="Favorite page"
@@ -1408,6 +1806,31 @@ export default function App() {
                             <small>{(a.size / 1024).toFixed(0)} KB</small>
                           </span>
                         </button>
+                        {ocrJobs[a.id] ? (
+                          <span className="ocr-status">
+                            <RefreshCw size={14} className="spin" />
+                            {ocrJobs[a.id]}
+                          </span>
+                        ) : (
+                          (a.text.trim() ||
+                            /^image\/|pdf/.test(a.type)) && (
+                            <button
+                              title={
+                                a.text.trim()
+                                  ? "Show the text in this file"
+                                  : "Read the text in this file (OCR)"
+                              }
+                              onClick={() =>
+                                a.text.trim()
+                                  ? setTextView(a.id)
+                                  : void readText(a.id, false)
+                              }
+                            >
+                              <ScanText size={15} />
+                              {a.text.trim() ? "Text" : "Read text"}
+                            </button>
+                          )
+                        )}
                         <button
                           aria-label={"Remove " + a.name}
                           onClick={() => {
@@ -1416,6 +1839,7 @@ export default function App() {
                               attachments: d.attachments.filter(
                                 (x) => x.id !== a.id,
                               ),
+                              deleted: { ...(d.deleted || {}), [a.id]: Date.now() },
                             }));
                             void flush()
                               .then(() => removeFile(a.id))
@@ -1713,6 +2137,25 @@ export default function App() {
             </div>
           </>
         )}
+        {view === "learn" &&
+          (pages.find((p) => p.id === learnId) ? (
+            <LearnView
+              key={learnId}
+              page={pages.find((p) => p.id === learnId)!}
+              data={data}
+              onAttempt={onAttempt}
+              onReviewCard={onReviewCard}
+              onExit={() => {
+                if (pageId === learnId) setView("page");
+                else openPage(learnId);
+              }}
+              onEdit={() => openPage(learnId)}
+            />
+          ) : (
+            <section className="workspace-view">
+              <p>This page is no longer available.</p>
+            </section>
+          ))}
         {view === "tasks" && (
           <section className="workspace-view">
             <div className="view-heading">
@@ -1822,6 +2265,7 @@ export default function App() {
                         update((d) => ({
                           ...d,
                           tasks: d.tasks.filter((x) => x.id !== t.id),
+                          deleted: { ...(d.deleted || {}), [t.id]: Date.now() },
                         }))
                       }
                     >
@@ -1875,168 +2319,324 @@ export default function App() {
               <div>
                 <div className="eyebrow">UNDERSTAND. REMEMBER. REPEAT.</div>
                 <h1>Your study space</h1>
-                <p>Keep the important ideas, and come back to them.</p>
+                <p>Learn a little, quiz yourself, and come back tomorrow.</p>
               </div>
               <button className="primary" onClick={() => cardDialog()}>
                 <Plus size={17} /> New flashcard
               </button>
             </div>
-            <div className="study-tabs">
-              <button
-                className={studyTab === "cards" ? "active" : ""}
-                onClick={() => setStudyTab("cards")}
-              >
-                Flashcards <small>{data.cards.length}</small>
-              </button>
-              <button
-                className={studyTab === "markers" ? "active" : ""}
-                onClick={() => setStudyTab("markers")}
-              >
-                Marked material
-              </button>
-            </div>
-            {studyTab === "cards" ? (
+            {session ? (
+              <ReviewSession
+                key={session.title + session.questions.map((q) => q.key).join()}
+                title={session.title}
+                questions={session.questions}
+                data={data}
+                onAttempt={onAttempt}
+                onReviewCard={onReviewCard}
+                onExit={() => setSession(null)}
+              />
+            ) : (
               <>
-                <div className="study-session">
-                  {reviewCard ? (
-                    <>
-                      <div className="review-meta">
-                        <span>READY TO REVIEW</span>
-                        <span>{dueCards.length} remaining</span>
-                      </div>
-                      <div className="flashcard">
-                        <div className="eyebrow">
-                          {pages.find((p) => p.id === reviewCard.pageId)
-                            ?.title || "Personal cards"}
+                <div className="study-tabs">
+                  <button
+                    className={studyTab === "today" ? "active" : ""}
+                    onClick={() => setStudyTab("today")}
+                  >
+                    Today {dueNow > 0 && <small>{dueNow}</small>}
+                  </button>
+                  <button
+                    className={studyTab === "cards" ? "active" : ""}
+                    onClick={() => setStudyTab("cards")}
+                  >
+                    Flashcards <small>{data.cards.length}</small>
+                  </button>
+                  <button
+                    className={studyTab === "weak" ? "active" : ""}
+                    onClick={() => setStudyTab("weak")}
+                  >
+                    Weak spots{" "}
+                    {weak.length > 0 && <small>{weak.length}</small>}
+                  </button>
+                  <button
+                    className={studyTab === "markers" ? "active" : ""}
+                    onClick={() => setStudyTab("markers")}
+                  >
+                    Marked material
+                  </button>
+                </div>
+                {studyTab === "today" ? (
+                  <div className="today-view">
+                    <div className="today-row">
+                      <div className={"streak-card " + (studiedToday ? "lit" : "")}>
+                        <Flame size={30} />
+                        <div>
+                          <strong>
+                            {days} day{days === 1 ? "" : "s"}
+                          </strong>
+                          <span>
+                            {studiedToday
+                              ? "You studied today. Streak safe."
+                              : days
+                                ? "Answer one question today to keep your streak."
+                                : "Answer one question today to start a streak."}
+                          </span>
                         </div>
-                        <h2>{reviewCard.question}</h2>
-                        {revealed ? (
-                          <>
-                            <hr />
-                            <p>{reviewCard.answer}</p>
-                          </>
-                        ) : (
-                          <button onClick={() => setRevealed(true)}>
-                            Reveal answer
-                          </button>
-                        )}
                       </div>
-                      {revealed && (
-                        <div className="review-actions">
-                          {[
-                            ["Again", 0],
-                            ["Hard", 1],
-                            ["Good", Math.max(3, reviewCard.interval * 2)],
-                            ["Easy", Math.max(7, reviewCard.interval * 3)],
-                          ].map(([label, days]) => (
-                            <button
-                              key={label}
-                              onClick={() => {
-                                const n = Number(days);
-                                update((d) => ({
-                                  ...d,
-                                  cards: d.cards.map((c) =>
-                                    c.id === reviewCard.id
-                                      ? {
-                                          ...c,
-                                          interval: n,
-                                          due:
-                                            Date.now() +
-                                            (n === 0 ? 60000 : n * 86400000),
-                                        }
-                                      : c,
-                                  ),
-                                }));
-                                setRevealed(false);
-                                setCardIndex(0);
-                              }}
-                            >
-                              {label}
-                              <small>
-                                {days === 0 ? "1 minute" : `${days} days`}
-                              </small>
+                      <div className="today-card">
+                        <div className="eyebrow">5-MINUTE REVIEW</div>
+                        <h2>
+                          {dueNow
+                            ? `${Math.min(dueNow, 15)} question${Math.min(dueNow, 15) === 1 ? "" : "s"} ready`
+                            : "You're all caught up"}
+                        </h2>
+                        <p>
+                          Weak spots come first, then flashcards and questions
+                          that are due again.
+                        </p>
+                        <div className="button-row">
+                          <button
+                            className="primary"
+                            disabled={!dueNow}
+                            onClick={startDaily}
+                          >
+                            <Sparkles size={17} /> Start today's review
+                          </button>
+                          {weak.length > 0 && (
+                            <button onClick={startWeak}>
+                              <Target size={17} /> Practice weak spots
                             </button>
-                          ))}
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="section-heading">
+                      <h2>
+                        <GraduationCap size={18} /> Teach me a page
+                      </h2>
+                      {!pages.some((p) => p.title === EXAMPLE_TITLE) && (
+                        <button
+                          onClick={() => {
+                            const p = examplePage();
+                            update((d) => ({ ...d, pages: [...d.pages, p] }));
+                            openPage(p.id);
+                          }}
+                        >
+                          <Plus size={15} /> Add an example page
+                        </button>
+                      )}
+                    </div>
+                    <p className="small muted">
+                      Teach-me mode splits a page into small bites, quizzes you
+                      right after each one, and brings back what you miss.
+                      Headings make sections; Tap to Learn blocks, blanks,
+                      labelled images and <b>bold key terms</b> become
+                      questions.
+                    </p>
+                    <div className="lesson-list">
+                      {[...pages]
+                        .filter((p) => p.plainText.trim().length > 40)
+                        .sort((a, b) => b.updatedAt - a.updatedAt)
+                        .slice(0, 9)
+                        .map((p) => (
+                          <button
+                            key={p.id}
+                            className="lesson-card"
+                            onClick={() => startLearn(p.id)}
+                          >
+                            <span className="page-icon">
+                              <PageGlyph icon={p.icon} />
+                            </span>
+                            <span>
+                              <strong>{p.title || "Untitled"}</strong>
+                              <small>
+                                {lessonLabel(p)}
+                              </small>
+                            </span>
+                            <ChevronRight size={16} />
+                          </button>
+                        ))}
+                    </div>
+                  </div>
+                ) : studyTab === "cards" ? (
+                  <>
+                    <div className="study-session">
+                      {reviewCard ? (
+                        <>
+                          <div className="review-meta">
+                            <span>READY TO REVIEW</span>
+                            <span>{dueCards.length} remaining</span>
+                          </div>
+                          <div className="flashcard">
+                            <div className="eyebrow">
+                              {pages.find((p) => p.id === reviewCard.pageId)
+                                ?.title || "Personal cards"}
+                            </div>
+                            <h2>{reviewCard.question}</h2>
+                            {revealed ? (
+                              <>
+                                <hr />
+                                <p>{reviewCard.answer}</p>
+                              </>
+                            ) : (
+                              <button onClick={() => setRevealed(true)}>
+                                Reveal answer
+                              </button>
+                            )}
+                          </div>
+                          {revealed && (
+                            <div className="review-actions">
+                              {(
+                                [
+                                  ["Again", 0],
+                                  ["Hard", 1],
+                                  ["Good", 2],
+                                  ["Easy", 3],
+                                ] as const
+                              ).map(([text, r]) => (
+                                <button
+                                  key={text}
+                                  onClick={() => {
+                                    onReviewCard(reviewCard.id, r);
+                                    setRevealed(false);
+                                    setCardIndex(0);
+                                  }}
+                                >
+                                  {text}
+                                  <small>
+                                    {intervalLabel(
+                                      schedule(reviewCard, r).interval,
+                                    )}
+                                  </small>
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                        </>
+                      ) : (
+                        <div className="quiet-empty">
+                          <BookOpen size={34} />
+                          <h2>
+                            {data.cards.length
+                              ? "All caught up."
+                              : "Make knowledge your own."}
+                          </h2>
+                          <p>
+                            {data.cards.length
+                              ? "Your next cards will appear when they’re due."
+                              : "Create a flashcard from a key idea, or highlight text inside a note."}
+                          </p>
                         </div>
                       )}
-                    </>
-                  ) : (
-                    <div className="quiet-empty">
-                      <BookOpen size={34} />
-                      <h2>
-                        {data.cards.length
-                          ? "All caught up."
-                          : "Make knowledge your own."}
-                      </h2>
-                      <p>
-                        {data.cards.length
-                          ? "Your next cards will appear when they’re due."
-                          : "Create a flashcard from a key idea, or highlight text inside a note."}
-                      </p>
                     </div>
-                  )}
-                </div>
                 <details className="all-cards">
-                  <summary>Manage all flashcards ({data.cards.length})</summary>
-                  {data.cards.map((c) => (
-                    <div key={c.id}>
-                      <div>
-                        <strong>{c.question}</strong>
-                        <p>{c.answer}</p>
-                        <small>
-                          Next review: {new Date(c.due).toLocaleString()}
-                        </small>
+                      <summary>Manage all flashcards ({data.cards.length})</summary>
+                      {data.cards.map((c) => (
+                        <div key={c.id}>
+                          <div>
+                            <strong>{c.question}</strong>
+                            <p>{c.answer}</p>
+                            <small>
+                              Next review: {new Date(c.due).toLocaleString()}
+                            </small>
+                          </div>
+                          <button
+                            title="Edit card"
+                            onClick={() => {
+                              setCardQ(c.question);
+                              setCardA(c.answer);
+                              const q = prompt("Question", c.question);
+                              if (q === null) return;
+                              const a = prompt("Answer", c.answer);
+                              if (a === null) return;
+                              update((d) => ({
+                                ...d,
+                                cards: d.cards.map((x) =>
+                                  x.id === c.id
+                                    ? { ...x, question: q, answer: a }
+                                    : x,
+                                ),
+                              }));
+                            }}
+                          >
+                            Edit
+                          </button>
+                          <button
+                            aria-label="Review card now"
+                            onClick={() =>
+                              update((d) => ({
+                                ...d,
+                                cards: d.cards.map((x) =>
+                                  x.id === c.id ? { ...x, due: Date.now() } : x,
+                                ),
+                              }))
+                            }
+                          >
+                            Review now
+                          </button>
+                          <button
+                            aria-label="Delete card"
+                            onClick={() =>
+                              update((d) => ({
+                                ...d,
+                                cards: d.cards.filter((x) => x.id !== c.id),
+                                deleted: { ...(d.deleted || {}), [c.id]: Date.now() },
+                              }))
+                            }
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
+                      ))}
+                    </details>
+                  </>
+                ) : studyTab === "weak" ? (
+                  <div className="weak-view">
+                    {weak.length ? (
+                      <>
+                        <div className="section-heading">
+                          <h2>
+                            <Target size={18} /> What keeps tripping you up
+                          </h2>
+                          <button className="primary" onClick={startWeak}>
+                            Practice these
+                          </button>
+                        </div>
+                        <div className="weak-list">
+                          {weak.slice(0, 60).map((i) => (
+                            <div key={i.id} className="weak-row">
+                              <div>
+                                <strong>
+                                  {i.kind === "label"
+                                    ? "Label on a diagram"
+                                    : i.prompt}
+                                </strong>
+                                <span>{i.answer.split("|")[0].slice(0, 200)}</span>
+                              </div>
+                              <small>
+                                missed {i.wrong} of {i.right + i.wrong}
+                              </small>
+                              {i.pageId && (
+                                <button onClick={() => openPage(i.pageId!)}>
+                                  {pages.find((p) => p.id === i.pageId)?.title}
+                                  <ChevronRight size={14} />
+                                </button>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </>
+                    ) : (
+                      <div className="quiet-empty">
+                        <Target size={30} />
+                        <h2>No weak spots yet.</h2>
+                        <p>
+                          Anything you miss in Teach-me mode, reviews or the
+                          quiz blocks in your notes collects here.
+                        </p>
                       </div>
-                      <button
-                        title="Edit card"
-                        onClick={() => {
-                          setCardQ(c.question);
-                          setCardA(c.answer);
-                          const q = prompt("Question", c.question);
-                          if (q === null) return;
-                          const a = prompt("Answer", c.answer);
-                          if (a === null) return;
-                          update((d) => ({
-                            ...d,
-                            cards: d.cards.map((x) =>
-                              x.id === c.id
-                                ? { ...x, question: q, answer: a }
-                                : x,
-                            ),
-                          }));
-                        }}
-                      >
-                        Edit
-                      </button>
-                      <button
-                        aria-label="Review card now"
-                        onClick={() =>
-                          update((d) => ({
-                            ...d,
-                            cards: d.cards.map((x) =>
-                              x.id === c.id ? { ...x, due: Date.now() } : x,
-                            ),
-                          }))
-                        }
-                      >
-                        Review now
-                      </button>
-                      <button
-                        aria-label="Delete card"
-                        onClick={() =>
-                          update((d) => ({
-                            ...d,
-                            cards: d.cards.filter((x) => x.id !== c.id),
-                          }))
-                        }
-                      >
-                        <Trash2 size={16} />
-                      </button>
-                    </div>
-                  ))}
-                </details>
-              </>
-            ) : (
+                    )}
+                  </div>
+                ) : (
               <div className="marked-list">
                 {pages.flatMap((p) =>
                   markedBlocks(p.content).map((b, i) => (
@@ -2051,7 +2651,7 @@ export default function App() {
                         </button>
                       </div>
                       <p>{b.text}</p>
-                      <button onClick={() => cardDialog(b.text)}>
+                      <button onClick={() => cardDialog(b.text, p.id)}>
                         Create flashcard
                       </button>
                     </article>
@@ -2068,6 +2668,8 @@ export default function App() {
                   </div>
                 )}
               </div>
+                )}
+              </>
             )}
           </section>
         )}
@@ -2099,6 +2701,7 @@ export default function App() {
                     }))
                   }
                 >
+                  <option value="system">Match my device</option>
                   <option value="light">Light</option>
                   <option value="dark">Dark</option>
                   <option value="sepia">Sepia</option>
@@ -2183,9 +2786,159 @@ export default function App() {
                 lists, checkboxes, links, and code blocks are converted into
                 editor blocks.
               </p>
-              <button onClick={() => noteInput.current?.click()}>
-                <Upload size={17} /> Import .md or .txt
+              <div className="button-row">
+                <button onClick={() => noteInput.current?.click()}>
+                  <Upload size={17} /> Import .md or .txt
+                </button>
+                <button
+                  disabled={busy}
+                  onClick={() => notionInput.current?.click()}
+                >
+                  <Upload size={17} /> Import a Notion export (.zip)
+                </button>
+              </div>
+              <p className="small">
+                In Notion open Settings → Workspace → Export (or a page's ⋯ menu
+                → Export), choose <i>Markdown &amp; CSV</i> with subpages, and
+                import the ZIP here. Pages keep their nesting, images and links;
+                databases become Collections. Write <code>{"{{answer}}"}</code>{" "}
+                in Markdown to make a fill-in-the-blank.
+              </p>
+            </div>
+            <div className="settings-section" id="sync">
+              <h2>Sync between your devices</h2>
+              <p>
+                Keep the same notes on your phone and laptop. Slate keeps a copy
+                in a private GitHub repository that you own and syncs it when
+                you open Slate, a little after you edit, and when you leave.
+                Nothing goes to any other server.
+              </p>
+              {syncInfo.repo ? (
+                <>
+                  <p>
+                    Syncing with <b>{syncInfo.repo}</b>.{" "}
+                    {syncInfo.error
+                      ? syncInfo.status
+                      : syncInfo.at
+                        ? "Last synced " +
+                          new Date(syncInfo.at).toLocaleTimeString()
+                        : syncInfo.status}
+                  </p>
+                  <div className="button-row">
+                    <button className="primary" onClick={() => void runSync(true)}>
+                      <RefreshCw size={17} /> Sync now
+                    </button>
+                    <button
+                      onClick={async () => {
+                        if (
+                          !confirm(
+                            "Stop syncing this device? Your notes stay here and in the repository.",
+                          )
+                        )
+                          return;
+                        await sync.setConfig(undefined);
+                        syncOn.current = false;
+                        setSyncInfo({ repo: "", status: "", error: false, at: 0 });
+                      }}
+                    >
+                      Stop syncing
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <ol className="steps">
+                    <li>
+                      Create a <b>private</b> repository on GitHub, for example{" "}
+                      <i>slate-notes</i>.{" "}
+                      <a href="https://github.com/new" target="_blank" rel="noreferrer">
+                        Create one
+                      </a>
+                    </li>
+                    <li>
+                      Create a fine-grained token. Under Repository access pick{" "}
+                      <i>Only select repositories</i> and choose that repository.
+                      Under Permissions set <i>Contents</i> to{" "}
+                      <i>Read and write</i>.{" "}
+                      <a
+                        href="https://github.com/settings/personal-access-tokens/new"
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        Create a token
+                      </a>
+                    </li>
+                    <li>Paste both here. Then do the same on your other device.</li>
+                  </ol>
+                  <form
+                    className="sync-form"
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      void connectSync();
+                    }}
+                  >
+                    <label>
+                      <span>Repository</span>
+                      <input
+                        placeholder="your-name/slate-notes"
+                        value={syncForm.repo}
+                        autoComplete="off"
+                        onChange={(e) =>
+                          setSyncForm((f) => ({ ...f, repo: e.target.value }))
+                        }
+                      />
+                    </label>
+                    <label>
+                      <span>Token</span>
+                      <input
+                        type="password"
+                        placeholder="github_pat_…"
+                        value={syncForm.token}
+                        autoComplete="off"
+                        onChange={(e) =>
+                          setSyncForm((f) => ({ ...f, token: e.target.value }))
+                        }
+                      />
+                    </label>
+                    <button className="primary" type="submit" disabled={busy}>
+                      <Cloud size={17} /> {busy ? "Connecting…" : "Connect and sync"}
+                    </button>
+                  </form>
+                  <p className="small">
+                    The token is stored only on this device. It's never put in
+                    backups or in the synced copy. Anyone with it can read that
+                    repository, so keep it to yourself.
+                  </p>
+                </>
+              )}
+            </div>
+            <div className="settings-section">
+              <h2>Read text in scans and photos</h2>
+              <p>
+                Slate can read printed text in photos and scanned PDFs, on your
+                device, so it shows up in search. Use <b>Read text</b> on an
+                attachment to see it or put it into your notes.
+              </p>
+              <label>
+                <span>Read text automatically when I attach a scan or photo</span>
+                <input
+                  type="checkbox"
+                  checked={data.settings.ocr !== false}
+                  onChange={(e) =>
+                    update((d) => ({
+                      ...d,
+                      settings: { ...d.settings, ocr: e.target.checked },
+                    }))
+                  }
+                />
+              </label>
+              <button disabled={busy || !online} onClick={() => void prepareOcr()}>
+                <ScanText size={17} /> Download text reading for offline use
               </button>
+              <p className="small">
+                About 11 MB, downloaded once. It also downloads by itself the
+                first time you read a file while online.
+              </p>
             </div>
             <div className="settings-section">
               <h2>Use Slate offline</h2>
@@ -2210,7 +2963,7 @@ export default function App() {
               <p className="small">
                 Installed and browser versions at the same site address share a
                 workspace. A different browser or site address has separate
-                storage. Device sync is not included.
+                storage. Turn on sync above to share notes between them.
               </p>
             </div>
             <div className="settings-section">
@@ -2284,6 +3037,21 @@ export default function App() {
                           attachments: d.attachments.filter(
                             (a) => !ids.has(a.pageId),
                           ),
+                          deleted: {
+                            ...(d.deleted || {}),
+                            ...Object.fromEntries(
+                              [
+                                ...ids,
+                                ...fileIds,
+                                ...d.tasks
+                                  .filter((t) => t.pageId && ids.has(t.pageId))
+                                  .map((t) => t.id),
+                                ...d.cards
+                                  .filter((c) => c.pageId && ids.has(c.pageId))
+                                  .map((c) => c.id),
+                              ].map((id) => [id, Date.now()]),
+                            ),
+                          },
                         }));
                         void flush()
                           .then(async () => {
@@ -2321,6 +3089,15 @@ export default function App() {
         accept=".zip"
         onChange={(e) => {
           if (e.target.files?.[0]) void importBackup(e.target.files[0]);
+        }}
+      />
+      <input
+        hidden
+        ref={notionInput}
+        type="file"
+        accept=".zip,application/zip"
+        onChange={(e) => {
+          if (e.target.files?.[0]) void importNotionZip(e.target.files[0]);
         }}
       />
       <input
@@ -2449,17 +3226,15 @@ export default function App() {
                         [
                           "Switch theme",
                           () => {
-                            update((d) => ({
-                              ...d,
-                              settings: {
-                                ...d.settings,
-                                theme:
-                                  d.settings.theme === "dark"
-                                    ? "light"
-                                    : "dark",
-                              },
-                            }));
+                            toggleTheme();
                             setModal(null);
+                          },
+                        ],
+                        [
+                          "Start today's review",
+                          () => {
+                            setModal(null);
+                            startDaily();
                           },
                         ],
                       ]
@@ -2717,6 +3492,63 @@ export default function App() {
           </div>
         </div>
       )}
+      {textView &&
+        (() => {
+          const a = data.attachments.find((x) => x.id === textView);
+          if (!a) return null;
+          return (
+            <div
+              className="modal-backdrop"
+              onMouseDown={(e) => {
+                if (e.target === e.currentTarget) setTextView(null);
+              }}
+            >
+              <div className="modal text-modal" role="dialog" aria-label="File text">
+                <div className="modal-heading">
+                  <h2>Text in {a.name}</h2>
+                  <button aria-label="Close" onClick={() => setTextView(null)}>
+                    <X size={20} />
+                  </button>
+                </div>
+                <textarea readOnly rows={14} value={a.text} />
+                <div className="button-row">
+                  <button
+                    className="primary"
+                    onClick={() => {
+                      window.dispatchEvent(
+                        new CustomEvent("slate-insert", {
+                          detail: {
+                            pageId: a.pageId,
+                            content: textDoc(
+                              a.text.replace(/\[Page \d+\]\n?/g, ""),
+                            ).content,
+                          },
+                        }),
+                      );
+                      setTextView(null);
+                      if (pageId !== a.pageId) openPage(a.pageId);
+                      notify("Text added to the page");
+                    }}
+                  >
+                    <Plus size={16} /> Put this text in the page
+                  </button>
+                  <button
+                    onClick={async () => {
+                      try {
+                        await navigator.clipboard.writeText(a.text);
+                        notify("Copied");
+                      } catch {
+                        notify("Select the text and copy it.");
+                      }
+                    }}
+                  >
+                    <Copy size={16} /> Copy
+                  </button>
+                </div>
+              </div>
+            </div>
+          );
+        })()}
       {preview && (
         <div className="modal-backdrop file-backdrop">
           <div className="file-preview">

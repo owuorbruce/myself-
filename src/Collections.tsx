@@ -471,6 +471,7 @@ export default function Collections({
                   update((d) => ({
                     ...d,
                     collections: d.collections.filter((x) => x.id !== c.id),
+                    deleted: { ...(d.deleted || {}), [c.id]: Date.now() },
                   }));
                   notify("Collection deleted");
                 }
