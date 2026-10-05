@@ -1,6 +1,6 @@
 import JSZip from "jszip";
 import type { JSONContent } from "@tiptap/react";
-import { parseMarkdown } from "./markdown";
+import { parseMarkdown, parseRich } from "./markdown";
 import {
   newPage,
   plain,
@@ -203,7 +203,36 @@ export async function importNotion(
         inAside = false;
         continue;
       }
-      line = line.replace(/<\/?(details|summary|span|div)[^>]*>/g, "");
+      line = line.replace(/<\/?(span|div)[^>]*>/g, "");
+      const lead = line.match(/^\s*/)![0];
+      // An embedded slide saved as an HTML file: use the pictures inside it.
+      const embed = line.match(/^\s*\[([^\]]*)\]\(([^)]+\.html?)\)\s*$/i);
+      if (embed && !/^https?:/i.test(embed[2])) {
+        const entry = entries.get(resolve(here, embed[2]));
+        if (entry) {
+          const html = await entry.async("string");
+          const found = [
+            ...html.matchAll(
+              /data:image\/(png|jpe?g|gif|webp);base64,[A-Za-z0-9+/=]+/gi,
+            ),
+          ]
+            .map((m) =>
+              m[0].replace(/^data:image\/jpg;/i, "data:image/jpeg;"),
+            )
+            .filter((src, i, all) => all.indexOf(src) === i && src.length < 7e6)
+            .slice(0, 4);
+          if (found.length) {
+            for (const src of found) {
+              images.push({
+                type: "image",
+                attrs: { src, alt: embed[1] || base(embed[2]) },
+              });
+              out.push(`${lead}@@IMG${images.length - 1}@@`);
+            }
+            continue;
+          }
+        }
+      }
       const image = line.match(/^\s*!\[([^\]]*)\]\(([^)]+)\)\s*$/);
       if (image && !/^https?:/i.test(image[2])) {
         const target = resolve(here, image[2]);
@@ -217,7 +246,7 @@ export async function importNotion(
               type: "image",
               attrs: { src: await dataURL(blob), alt: image[1] || base(target) },
             });
-            out.push(`@@IMG${images.length - 1}@@`);
+            out.push(`${lead}@@IMG${images.length - 1}@@`);
             continue;
           }
         }
@@ -258,10 +287,10 @@ export async function importNotion(
         a.text = new TextDecoder().decode(bytes).slice(0, 1000000);
       files.push({ attachment: a, blob: new Blob([bytes], { type: a.type }) });
     }
-    const doc = parseMarkdown(out.join("\n"));
+    const doc = parseRich(out.join("\n"));
     const fill = (n: JSONContent): JSONContent[] => {
       if (n.type === "paragraph" && n.content?.length === 1) {
-        const m = (n.content[0].text || "").match(/^@@IMG(\d+)@@$/);
+        const m = (n.content[0].text || "").match(/^\s*@@IMG(\d+)@@\s*$/);
         if (m) return [images[Number(m[1])]];
       }
       if (n.type === "text" && n.text && /@@LINK\d+@@/.test(n.text)) {

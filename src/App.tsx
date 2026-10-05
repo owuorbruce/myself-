@@ -60,6 +60,7 @@ import {
 } from "./study";
 import { schedule, label as intervalLabel, streak } from "./grading.mjs";
 import { prepareRestore } from "./sync-merge.mjs";
+import { mergePages } from "./merge-pages.mjs";
 import * as sync from "./sync";
 import Collections from "./Collections";
 import {
@@ -88,7 +89,7 @@ import {
   type Task,
 } from "./types";
 import { canMove } from "./validation.mjs";
-import { parseMarkdown } from "./markdown";
+import { parseRich } from "./markdown";
 const dateLabel = (n: number) =>
   new Date(n).toLocaleDateString(undefined, { month: "short", day: "numeric" });
 const templates: Record<string, string> = {
@@ -212,6 +213,7 @@ export default function App() {
   const [ocrJobs, setOcrJobs] = useState<Record<string, string>>({});
   const [textView, setTextView] = useState<string | null>(null);
   const notionInput = useRef<HTMLInputElement>(null);
+  const pagesInput = useRef<HTMLInputElement>(null);
   const syncOn = useRef(false),
     syncing = useRef(false),
     restoring = useRef(false),
@@ -1021,6 +1023,34 @@ export default function App() {
       setBusy(false);
     }
   }
+  async function addPagesFile(file: File) {
+    setBusy(true);
+    try {
+      const prepared = await readBackup(file);
+      const result = mergePages(stateRef.current!, prepared.data, uid);
+      for (const [oldId, newId] of result.files) {
+        const blob = prepared.files.get(oldId);
+        if (blob) await putFile(newId, blob);
+      }
+      update(() => result.data);
+      for (const id of result.roots) {
+        const parent = result.data.pages.find((p) => p.id === id)?.parentId;
+        if (parent) setExpanded((e) => new Set([...e, parent]));
+      }
+      if (result.roots[0]) openPage(result.roots[0]);
+      notify(
+        `Added ${prepared.data.pages.filter((p) => !p.trashed).length} page${prepared.data.pages.length === 1 ? "" : "s"}` +
+          (result.placed
+            ? `, ${result.placed} placed inside your matching pages.`
+            : "."),
+      );
+    } catch (e) {
+      notify(e instanceof Error ? e.message : "Couldn't add pages from that file.");
+    } finally {
+      setBusy(false);
+      if (pagesInput.current) pagesInput.current.value = "";
+    }
+  }
   async function importBackup(file: File) {
     setBusy(true);
     try {
@@ -1072,7 +1102,7 @@ export default function App() {
       const p = newPage(
         file.name.replace(/\.(md|txt)$/i, ""),
         null,
-        /\.md$/i.test(file.name) ? parseMarkdown(text) : textDoc(text),
+        /\.md$/i.test(file.name) ? parseRich(text) : textDoc(text),
       );
       update((d) => ({ ...d, pages: [...d.pages, p] }));
       openPage(p.id);
@@ -2799,13 +2829,22 @@ export default function App() {
                 >
                   <Upload size={17} /> Import a Notion export (.zip)
                 </button>
+                <button
+                  disabled={busy}
+                  onClick={() => pagesInput.current?.click()}
+                >
+                  <Upload size={17} /> Add pages from a Slate file
+                </button>
               </div>
               <p className="small">
                 In Notion open Settings → Workspace → Export (or a page's ⋯ menu
                 → Export), choose <i>Markdown &amp; CSV</i> with subpages, and
                 import the ZIP here. Pages keep their nesting, images and links;
-                databases become Collections. Write <code>{"{{answer}}"}</code>{" "}
-                in Markdown to make a fill-in-the-blank.
+                databases become Collections, and toggles become Tap to Learn
+                questions. Write <code>{"{{answer}}"}</code> in Markdown to make
+                a fill-in-the-blank. <b>Add pages from a Slate file</b> adds the
+                pages from another Slate backup or page pack without replacing
+                anything.
               </p>
             </div>
             <div className="settings-section" id="sync">
@@ -3084,6 +3123,15 @@ export default function App() {
         type="file"
         multiple
         onChange={(e) => void addAttachments(e.target.files)}
+      />
+      <input
+        hidden
+        ref={pagesInput}
+        type="file"
+        accept=".zip"
+        onChange={(e) => {
+          if (e.target.files?.[0]) void addPagesFile(e.target.files[0]);
+        }}
       />
       <input
         hidden
