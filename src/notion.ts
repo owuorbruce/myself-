@@ -209,7 +209,7 @@ export async function importNotion(
         const target = resolve(here, image[2]);
         const entry = entries.get(target);
         if (entry && IMAGE.test(target)) {
-          const blob = new Blob([await entry.async("uint8array")], {
+          const blob = new Blob([await entry.async("arraybuffer")], {
             type: mime(target),
           });
           if (blob.size < 5 * 1024 * 1024) {
@@ -248,12 +248,12 @@ export async function importNotion(
       out.push(inAside ? "> " + line.replace(/^>\s?/, "") : line);
     }
     for (const { attachment: a, target } of attachedHere) {
-      const bytes = await entries.get(target)!.async("uint8array");
-      if (bytes.length > 25 * 1024 * 1024) {
+      const bytes = await entries.get(target)!.async("arraybuffer");
+      if (bytes.byteLength > 25 * 1024 * 1024) {
         skipped++;
         continue;
       }
-      a.size = bytes.length;
+      a.size = bytes.byteLength;
       if (/^text\//.test(a.type))
         a.text = new TextDecoder().decode(bytes).slice(0, 1000000);
       files.push({ attachment: a, blob: new Blob([bytes], { type: a.type }) });
