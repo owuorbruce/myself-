@@ -101,7 +101,11 @@ The token is stored only in that browser's device storage. It is never put in ba
 
 In Notion, export with **Markdown & CSV** and **Include subpages** (Settings → Workspace → Export, or a page's ⋯ menu → Export). In Slate open **Settings & backups → Import a Notion export (.zip)**.
 
-Pages keep their nesting, images, tables, callouts, checklists and links between pages. Other files become attachments. Databases become Collections, and their row pages are imported as pages. Everything lands under a page called **Imported from Notion**. Files over 25 MB are skipped.
+Pages keep their nesting, images, tables, callouts, checklists and links between pages. Toggles become Tap to Learn questions (a toggle that holds other toggles becomes a section heading), and slides embedded as HTML files become images. Other files become attachments. Databases become Collections, and their row pages are imported as pages. Everything lands under a page called **Imported from Notion**. Files over 25 MB are skipped.
+
+## Add pages from a Slate file
+
+**Settings & backups → Add pages from a Slate file** adds the pages in a Slate backup ZIP or page pack to your workspace without replacing anything. Pages in a pack can name a page to go inside (for example the Lab 2 page), and they're nested there when it exists.
 
 ## Read text in scans and photos
 
