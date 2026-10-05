@@ -44,6 +44,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { useRegisterSW } from "virtual:pwa-register/react";
+import { ChatGPTPanel, ChatGPTSettings } from "./ChatGPT";
 import NoteEditor from "./Editor";
 import { LearnView, ReviewSession } from "./Learn";
 import { buildLesson, lessonStats } from "./lesson";
@@ -2049,10 +2050,7 @@ export default function App() {
                     </>
                   ) : (
                     <>
-                      <p>
-                        Use the ChatGPT plan you already have. Copy the prompt,
-                        open ChatGPT, and paste it there.
-                      </p>
+                      <p>Ask about the notes you choose, using your ChatGPT plan.</p>
                       <label>
                         Use
                         <select
@@ -2101,6 +2099,27 @@ export default function App() {
                           onChange={(e) => setAiQuestion(e.target.value)}
                         />
                       </label>
+                      <ChatGPTPanel
+                        key={page.id}
+                        prompt={aiPrompt()}
+                        action={aiAction}
+                        onExport={() => void backup()}
+                        onSave={(answer) => {
+                          const note = newPage("ChatGPT · " + (page.title || "Notes"), page.id, parseRich(answer));
+                          update((d) => ({ ...d, pages: [...d.pages, note] }));
+                          setExpanded((e) => new Set([...e, page.id]));
+                          notify("ChatGPT answer saved as a new note");
+                        }}
+                        onCards={(cards) => {
+                          update((d) => ({ ...d, cards: [...d.cards, ...cards.map((c) => ({
+                            id: uid(), pageId: page.id, question: c.question, answer: c.answer,
+                            due: Date.now(), interval: 0,
+                          }))] }));
+                          notify(`${cards.length} flashcards added`);
+                        }}
+                      />
+                      <details className="chatgpt-manual">
+                        <summary>Use copy and paste instead</summary>
                       <button
                         className="primary"
                         onClick={() => void copyPrompt()}
@@ -2125,9 +2144,7 @@ export default function App() {
                         />
                       </details>
                       <p className="small">
-                        ChatGPT responses come back through copy and paste.
-                        Slate does not sign in to your account or send notes
-                        automatically.
+                        Copy the prompt into ChatGPT and paste its response back into a note.
                       </p>
                       {aiAction === "Flashcards" && (
                         <button
@@ -2173,6 +2190,7 @@ export default function App() {
                           Import flashcard answers
                         </button>
                       )}
+                      </details>
                     </>
                   )}
                 </aside>
@@ -2782,6 +2800,7 @@ export default function App() {
                 />
               </label>
             </div>
+            <ChatGPTSettings onExport={() => void backup()} />
             <div className="settings-section">
               <h2>Keep a copy</h2>
               <p>

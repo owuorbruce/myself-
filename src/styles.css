@@ -3503,3 +3503,24 @@ kbd {
   padding: 0;
   max-width: none;
 }
+
+/* ChatGPT account controls and completed, user-saved answers. */
+.chatgpt-panel { display: grid; gap: 12px; margin: 16px 0; }
+.chatgpt-connection { display: grid; gap: 10px; padding: 12px; border: 1px solid var(--line); border-radius: 10px; }
+.chatgpt-connection p { margin: 0; }
+.chatgpt-account { display: flex; align-items: center; gap: 6px; overflow-wrap: anywhere; }
+.chatgpt-actions { display: flex; flex-wrap: wrap; gap: 7px; }
+.chatgpt-actions button { font-size: 12px; min-height: 34px; }
+.chatgpt-error { color: var(--danger, #ad3535); overflow-wrap: anywhere; }
+.chatgpt-usage { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; }
+.chatgpt-local-setup ol { padding-left: 20px; font-size: 13px; line-height: 1.6; }
+.chatgpt-local-setup li { margin-bottom: 8px; }
+.chatgpt-answer { border-top: 1px solid var(--line); padding-top: 12px; }
+.chatgpt-answer h4 { margin: 0 0 10px; }
+.chatgpt-answer-text { white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.65; max-height: 50vh; overflow: auto; margin-bottom: 12px; user-select: text; }
+.chatgpt-followup { display: grid; gap: 8px; margin-top: 14px; }
+.chatgpt-manual { margin-top: 16px; border-top: 1px solid var(--line); padding-top: 12px; }
+.chatgpt-manual > summary { cursor: pointer; font-size: 13px; margin-bottom: 10px; }
+.chatgpt-spinner { animation: chatgpt-spin 1s linear infinite; }
+@keyframes chatgpt-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .chatgpt-spinner { animation: none; } }

@@ -4,3 +4,8 @@ node_modules/
 !.env.example
 .DS_Store
 qa/
+
+# Local sign-in credentials must never be committed.
+.slate/
+accounts.json
+accounts.json.*.tmp

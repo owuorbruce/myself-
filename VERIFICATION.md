@@ -1,4 +1,32 @@
-# Reliability verification
+# ChatGPT integration verification
+
+The combined suite passes **66 Node tests** (`npm test`), including the existing 43 project tests and 23 new ChatGPT tests. The production build passes TypeScript checks and generates the offline service worker.
+
+## ChatGPT checks
+
+- Fresh and returning OAuth requests use PKCE, state, nonce, a stable host ID, issued client IDs and the exact loopback callback URI. Failed exchanges retain registrations for retry.
+- RSA-signed ID tokens are verified against JWKS; invalid signature, issuer, audience, expiry, nonce or identity cannot replace an existing account.
+- Actual granted token scopes control inference access. Public session responses never expose access, refresh or ID tokens or the host ID.
+- Concurrent refreshes rotate one token set; losing plan permission prevents inference. Account credentials stay separate when selecting or signing out.
+- Remote revocation is attempted with retry/backoff. Failed revocation is reported while local tokens are cleared and client registration is retained.
+- Credential writes are atomic; Unix directory/file permissions and temporary-file cleanup are checked.
+- Model choices use the account catalog. Requests use the documented public Responses endpoint and supported input fields with `store: false` and streaming enabled.
+- Split UTF-8 and CRLF streams work. Completion returns promptly even if the upstream stays open. Interrupted, malformed, incomplete, usage-limited and empty replies fail instead of reporting success.
+- The real HTTP router rejects unexpected Host, cross-origin requests, missing CSRF tokens, incorrect content types and invalid messages. Callback content is escaped and framed content is blocked.
+- Client tests execute the actual transpiled TypeScript module. Blocked popups do not start OAuth; external sign-in links are rejected; partial replies cannot become completed answers.
+- Offline navigation excludes `/api/` and `/auth/`, so the service worker cannot swallow authorization redirects or callbacks.
+- Generated flashcards are bounded, validated JSON before workspace insertion.
+- A smoke check launches the real local server with isolated storage, serves the built app, obtains a local session, checks the OAuth redirect and confirms server source/credential files are not publicly served.
+
+## Limits
+
+Tests use generated test identities and simulated OpenAI responses. No real ChatGPT credentials were used. Account eligibility, consent, available models and a live response remain to be verified when the user signs in locally.
+
+A Chromium UI check could not start in this environment; the available browser exits before assertions. Downloading a replacement browser also failed. This is not evidence of a successful visual or browser OAuth test.
+
+The checked-in `dist/` is rebuilt for the dependency-free launcher. GitHub Pages builds from source with its repository base path. The hosted site shows local setup instructions and keeps the existing manual AI workflow.
+
+# Earlier reliability verification
 
 The reliability patch passed **41 Node tests** (`npm test`) and a production build (`npm run build`, including TypeScript checks and service-worker generation).
 

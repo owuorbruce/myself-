@@ -1,3 +1,4 @@
+import { createChatGPTRouter } from "./server/chatgpt-router.mjs";
 import http from "node:http";
 import { readFile, stat } from "node:fs/promises";
 import path from "node:path";
@@ -19,8 +20,10 @@ const mime = {
   ".gz": "application/gzip",
   ".txt": "text/plain",
 };
+const chatgpt = createChatGPTRouter();
 const server = http.createServer(async (req, res) => {
   try {
+    if (await chatgpt(req, res)) return;
     const url = new URL(req.url, "http://localhost");
     let relative = decodeURIComponent(url.pathname).replace(/^\/+/, "");
     if (!relative || relative.endsWith("/")) relative += "index.html";
@@ -55,6 +58,7 @@ server.on("error", (e) => {
 });
 server.listen(port, "127.0.0.1", () => {
   console.log("Slate is running at http://localhost:4173/");
+  console.log("ChatGPT sign-in is available in Settings and Ask ChatGPT. No API key is required.");
   console.log(
     "Keep this window open. Press Ctrl+C to stop. Your notes stay saved.",
   );

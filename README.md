@@ -55,7 +55,7 @@ GitHub setup documentation: https://docs.github.com/en/pages/getting-started-wit
 | Recovery     | Automatic snapshots, manual snapshots, restore history, trash and restore pages, full ZIP backup and restore                                 |
 | Portability  | Notion export import, Markdown export and import (tables, `{{blanks}}`), structured JSON backup, attachment files included                   |
 | Appearance   | Match my device, light, dark, sepia (moon button in the top bar); sans serif or serif editor; wide layout                                     |
-| AI           | Preview/copy a grounded prompt for a page, selected text, or relevant notes; open ChatGPT; paste answers back yourself                       |
+| AI           | Local ChatGPT sign-in, streamed answers, follow-ups, save-as-note and flashcards; hosted copy/paste fallback                       |
 | Offline      | Notes, search, collections, checklists, tasks, flashcards, existing attachments, and backups                                                 |
 
 ## Learn by doing
@@ -113,16 +113,24 @@ When you attach a photo or a scanned PDF, Slate reads the printed text on your d
 
 The text reader (about 11 MB) downloads the first time it's used, then works offline. **Download text reading for offline use** in Settings fetches it ahead of time. It reads English printed text; handwriting is hit and miss.
 
-## Ask ChatGPT using Plus
+## ChatGPT inside Slate — no API key
 
-1. Open a note and click **Ask ChatGPT**.
-2. Choose the page, highlighted selection, or relevant workspace notes. For workspace notes, enter a specific question to find matching sources.
-3. Choose an action and inspect **Preview prompt**.
-4. Click **Copy prompt**, then **Open ChatGPT**.
-5. Paste the prompt into ChatGPT and use your existing plan.
-6. Copy a response back into a note. For generated flashcards, ask for the JSON format and use **Import flashcard answers**.
+The local launcher supports OpenAI's [Sign in with ChatGPT for open-source apps](https://developers.openai.com/siwc/token-sharing-open-source). Eligible ChatGPT Plus or Pro accounts can share their plan allowance or available credits with Slate. This preview depends on account eligibility, permissions and usage limits. Slate does not fall back to separately billed API usage.
 
-Slate has no automatic ChatGPT login or subscription integration. It does not send notes to an AI service. It does not include an Ollama adapter or separately billed API integration. All AI work happens after you paste into ChatGPT. The normal limits of your ChatGPT plan still apply.
+1. If you use the hosted website, export your workspace in **Settings & backups** first.
+2. [Download the latest Slate ZIP](https://github.com/owuorbruce/myself-/archive/refs/heads/main.zip), unzip it and run the local launcher described above. Node.js 22.13 or newer is required; no `npm install` is needed.
+3. Open **http://localhost:4173/** and restore your exported workspace if you are moving from the hosted version.
+4. In **Settings & backups → ChatGPT in Slate**, or a note's **Ask ChatGPT** panel, choose **Continue with ChatGPT**. Sign in in your browser and allow Slate to use your ChatGPT plan.
+5. Return to Slate, choose an available model, select your notes or highlighted text, choose an action and press **Ask ChatGPT**.
+6. Read replies inside Slate, ask follow-up questions, copy the answer, save it as a new child note, or add generated flashcards after validation. Partial and failed replies cannot be saved through these controls.
+
+Keep the launcher open. AI replies need an internet connection; your normal note-taking features still work offline. The hosted GitHub Pages version provides these local setup steps and the existing **Use copy and paste instead** workflow. It cannot run the local sign-in helper itself.
+
+Only pressing **Ask ChatGPT** or **Send follow-up** sends the selected prompt/history to OpenAI. Replies stay in the current panel until you choose to save them. Slate does not import your ChatGPT conversations or personal memory. Changing accounts clears the current answer and conversation.
+
+Access, refresh and verified identity tokens are kept by the local helper at `~/.slate/chatgpt/accounts.json`, outside the project and workspace backups. `SLATE_CHATGPT_DIR` can override the credential directory for an isolated local runtime. On Unix, the directory is restricted to its owner and the file has mode `0600`. Windows uses the local user's filesystem permissions. These credentials are not encrypted; do not share this file. Sign out attempts remote revocation and clears local tokens while retaining the account registration for future sign-in. If revocation cannot be confirmed, Slate tells you to disconnect it in ChatGPT settings. Manage plan access and limits in **ChatGPT Settings → Usage**.
+
+Model choices come from the connected account. Usage-limit and eligibility failures appear in the answer panel, including failures that arrive after a reply starts. Your first real sign-in and response must be checked with your own account; automated tests use simulated OpenAI responses.
 
 ## Offline and storage
 
@@ -216,11 +224,13 @@ Set `VITE_BASE_PATH=/your-repository/` while building if you serve a prebuilt co
 - `src/pdf.ts`: lazy-loaded local PDF text extraction.
 - `vite.config.ts`: app build, manifest, full offline caching.
 - `.github/workflows/pages.yml`: GitHub Pages deployment.
-- `run-slate.mjs`: dependency-free localhost launcher for the prebuilt app.
+- `run-slate.mjs`: dependency-free localhost launcher for the prebuilt app and ChatGPT helper.
+- `server/chatgpt-auth.mjs`, `server/chatgpt-router.mjs`: local OAuth, credential storage, model catalog and response streaming.
+- `src/ChatGPT.tsx`, `src/chatgpt.ts`: ChatGPT settings, sign-in and answer panel.
 
 ## Current boundaries
 
-This version is a personal workspace. It has no real-time collaboration, native Windows/Linux installer, encrypted storage, collection formulas/relations, handwriting recognition, semantic/vector search, or automatic AI execution. Its installable app is a PWA. Sync needs a GitHub account and a private repository.
+This version is a personal workspace. It has no real-time collaboration, native Windows/Linux installer, encrypted storage, collection formulas/relations, handwriting recognition, semantic/vector search, or unattended AI execution. Its installable app is a PWA. Sync needs a GitHub account and a private repository.
 
 Calendar is a date-grouped agenda view. Reviews use an SM-2 style spaced repetition schedule rather than a full Anki/FSRS engine. Teach me builds questions from your own notes; it doesn't write explanations of its own. Markdown import covers headings, basic formatting, lists, checklists, quotes, links, and fenced code; more elaborate Markdown constructs are kept as text. Imported remote images are not fetched automatically.
 
