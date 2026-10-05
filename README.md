@@ -2,7 +2,7 @@
 
 An offline personal workspace for notes, coursework, projects, tasks, and study cards, where your notes quiz you back.
 
-**No account, server subscription, or AI API key is required.** Notes live on your device. The included ChatGPT workflow uses copy and paste with your existing ChatGPT plan.
+**Notes work offline without an account or subscription.** Optional ChatGPT sign-in in the local app uses eligible usage from your existing plan; no API key is required. The hosted app also includes a copy-and-paste workflow.
 
 ![Slate workspace preview](preview.png)
 
