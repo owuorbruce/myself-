@@ -122,6 +122,10 @@ export async function importNotion(
     throw new Error("The export must be smaller than 200 MB.");
   const entries = await entriesOf(await JSZip.loadAsync(file));
   const paths = [...entries.keys()];
+  if (paths.some((p) => /(^|\/)run-slate\.mjs$/.test(p)))
+    throw new Error(
+      "That's the Slate app download, not notes. Pick your Notion export or a Slate file.",
+    );
   const markdown = paths.filter((p) => /\.md$/i.test(p));
   const csvs = paths.filter((p) => /\.csv$/i.test(p));
   if (!markdown.length && !csvs.length)
