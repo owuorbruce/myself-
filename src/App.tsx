@@ -394,6 +394,49 @@ export default function App() {
       try { await flush(); return !pending.current && !errorRef.current; }
       catch { return false; }
     });
+
+    const stopMcp = window.slateDesktop?.onMcpCall(async (name, args) => {
+      if (restoring.current) throw new Error("Workspace restore is in progress");
+      await flush();
+      const current = stateRef.current;
+      if (!current) throw new Error("Workspace is not ready");
+      if (name === "list_notes") return current.pages.filter(p => !p.trashed)
+        .map(p => ({ id: p.id, title: p.title, updated_at: p.updatedAt }));
+      if (name === "search_notes") {
+        const query = String(args.query || "").trim().toLowerCase();
+        if (!query) throw new Error("Search query is required");
+        return current.pages.filter(p => !p.trashed && (p.title + "\n" + p.plainText).toLowerCase().includes(query))
+          .slice(0, 50).map(p => ({ id: p.id, title: p.title, snippet: p.plainText.slice(0, 300), updated_at: p.updatedAt }));
+      }
+      if (name === "get_note") {
+        const p = current.pages.find(p => p.id === args.id && !p.trashed);
+        if (!p) throw new Error("Note not found");
+        return { id: p.id, title: p.title, text: p.plainText, updated_at: p.updatedAt };
+      }
+      if (name === "create_note") {
+        const title = String(args.title || "").trim();
+        if (!title) throw new Error("Title is required");
+        const parentId = args.parent_id ? String(args.parent_id) : null;
+        if (parentId && !current.pages.some(p => p.id === parentId && !p.trashed)) throw new Error("Parent note not found");
+        const note = newPage(title, parentId, textDoc(String(args.text || "")));
+        update(d => ({ ...d, pages: [...d.pages, note] }));
+        await flush();
+        return { id: note.id, title: note.title, updated_at: note.updatedAt };
+      }
+      if (name === "append_to_note") {
+        const note = current.pages.find(p => p.id === args.id && !p.trashed);
+        if (!note) throw new Error("Note not found");
+        if (note.updatedAt !== args.expected_updated_at) throw new Error("Note changed. Read it again before appending.");
+        const contentText = String(args.text || "");
+        if (!contentText.trim()) throw new Error("Text is required");
+        const appended = textDoc(contentText).content || [];
+        const nextContent = { ...note.content, content: [...(note.content.content || []), ...appended] };
+        editPage(note.id, { content: nextContent, plainText: plain(nextContent) });
+        await flush();
+        return { id: note.id, updated: true };
+      }
+      throw new Error("Unknown tool");
+    });
     load()
       .then(async (result) => {
         if (!active) return;
@@ -456,6 +499,7 @@ export default function App() {
       media?.removeEventListener?.("change", scheme);
       channel.current?.close();
       window.removeEventListener("online", change);
+      stopMcp?.();
       window.removeEventListener("offline", change);
       window.removeEventListener("beforeunload", before);
       window.removeEventListener("beforeinstallprompt", install);
