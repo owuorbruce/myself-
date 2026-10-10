@@ -25,12 +25,12 @@ test('desktop sign-in bridge accepts one local ticket and only the pinned OpenAI
 });
 async function preloadHarness(){
  const source=await readFile(new URL('../desktop/preload.cjs',import.meta.url),'utf8');const listeners=new Map(),sent=[],invoked=[],events=[];let bridge;
- const electron={contextBridge:{exposeInMainWorld:(name,api)=>{assert.equal(name,'slateDesktop');bridge=api;}},ipcRenderer:{invoke:async(...args)=>{invoked.push(args);},on:(name,handler)=>listeners.set(name,handler),send:(...args)=>sent.push(args)}};
+ const electron={contextBridge:{exposeInMainWorld:(name,api)=>{assert.equal(name,'slateDesktop');bridge=api;}},ipcRenderer:{invoke:async(...args)=>{invoked.push(args);},on:(name,handler)=>listeners.set(name,handler),removeListener:(name,handler)=>{if(listeners.get(name)===handler)listeners.delete(name);},send:(...args)=>sent.push(args)}};
  vm.runInNewContext(source,{require:name=>{assert.equal(name,'electron');return electron;},window:{dispatchEvent:event=>events.push(event.type)},Event:class{constructor(type){this.type=type;}},TypeError});
  return {bridge,listeners,sent,invoked,events};
 }
 test('preload exposes narrow operations and reports save completion before closing',async()=>{
- const h=await preloadHarness();assert.deepEqual(Object.keys(h.bridge).sort(),['onBeforeClose','openSignIn']);
+ const h=await preloadHarness();assert.deepEqual(Object.keys(h.bridge).sort(),['onBeforeClose','onMcpCall','openSignIn']);
  await h.bridge.openSignIn('local ticket URL');assert.deepEqual(h.invoked,[['slate:sign-in','local ticket URL']]);
  let saved=false;const stop=h.bridge.onBeforeClose(async()=>{await Promise.resolve();saved=true;return true;});
  await h.listeners.get('slate:request-close')();assert.equal(saved,true);assert.deepEqual(h.sent.pop(),['slate:close-ready',true]);
