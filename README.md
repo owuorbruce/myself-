@@ -55,6 +55,34 @@ By default, notes and attachments stay in this browser's IndexedDB storage. GitH
 
 GitHub setup documentation: https://docs.github.com/en/pages/getting-started-with-github-pages/configuring-a-publishing-source-for-your-github-pages-site
 
+## Local MCP integration (desktop)
+
+Slate Desktop can expose your notes to desktop AI applications supporting the **MCP stdio** transport. The server works locally, only while Slate is running, and does not use an AI API key. This does **not** enable cloud-hosted ChatGPT to reach notes stored on your laptop.
+
+Tools: \`list_notes\`, \`search_notes\`, \`get_note\`, \`create_note\`, \`append_to_note\`. Deleted/trashed notes are excluded. Slate asks you to approve **every create or append** in a native desktop dialog; no bulk delete or wholesale replacement tool is exposed. Appends reject stale \`updated_at\` versions.
+
+To use the MCP server:
+
+1. Install and open the updated Slate Windows desktop app.
+2. Install Node.js 22 or later on the computer running the desktop MCP client.
+3. Download this repository's source code into a folder.
+4. In your MCP-compatible desktop client's server configuration, specify the executable \`node\` and pass the **absolute path** to \`server/mcp-stdio.mjs\` as its argument. For example:
+
+\`\`\`json
+{
+  "mcpServers": {
+    "slate": {
+      "command": "node",
+      "args": ["C:\\\\path\\\\to\\\\myself-\\\\server\\\\mcp-stdio.mjs"]
+    }
+  }
+}
+\`\`\`
+
+5. Keep Slate Desktop open while using the MCP client. The local connection configuration is generated inside Slate's application data directory when Slate starts and removed when it closes.
+
+Note that the server's source directory must include \`mcp-tools.mjs\`. Restart your MCP client after changing its configuration. Browser-only Slate and GitHub Pages do not expose MCP. The desktop integration does not grant remote access and is not a replacement for backup or GitHub sync.
+
 ## What you can do
 
 | Area         | Features                                                                                                                                     |
