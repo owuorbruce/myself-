@@ -14,7 +14,7 @@ export async function loadSource() {
     }).outputText.replace(/from "(\.\/[^".]+)"/g, 'from "$1.mjs"');
     await writeFile(join(dir, name + ".mjs"), out);
   }
-  for (const name of ["grading", "sync-merge", "validation"]) {
+  for (const name of ["grading", "sync-merge", "validation", "toggle"]) {
     await writeFile(join(dir, name + ".mjs"), await readFile(new URL(`../src/${name}.mjs`, import.meta.url)));
   }
   await writeFile(join(dir, "storage.mjs"), `

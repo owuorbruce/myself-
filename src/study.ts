@@ -1,8 +1,8 @@
 import { questionsFrom, currentBlank } from "./questions";
+import { studyToggle } from "./toggle.mjs";
 import type { JSONContent } from "@tiptap/react";
 import { schedule, localDay } from "./grading.mjs";
 import {
-  plain,
   type Card,
   type Page,
   type StudyItem,
@@ -143,15 +143,15 @@ export function itemQuestion(i: StudyItem, pages: Page[]): Question | null {
   }
   if (i.kind === "card") return null;
   if (i.kind === "reveal" && page && i.ref) {
-    const node = findNode(page.content, i.ref.node);
-    if (!node) return null;
+    const toggle = studyToggle(findNode(page.content, i.ref.node) || undefined);
+    if (!toggle) return null;
     return {
       key: i.id,
       kind: "reveal",
       mode: "self",
       pageId: i.pageId,
-      prompt: String(node.attrs?.question || i.prompt),
-      answer: plain(node),
+      prompt: toggle.summary,
+      answer: toggle.answer,
       ref: i.ref,
     };
   }

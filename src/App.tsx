@@ -2516,9 +2516,8 @@ export default function App() {
                     <p className="small muted">
                       Teach-me mode splits a page into small bites, quizzes you
                       right after each one, and brings back what you miss.
-                      Headings make sections; Tap to Learn blocks, blanks,
-                      labelled images and <b>bold key terms</b> become
-                      questions.
+                      Headings make sections; toggles, blanks, labelled
+                      images and <b>bold key terms</b> become questions.
                     </p>
                     <div className="lesson-list">
                       {[...pages]
@@ -2896,8 +2895,8 @@ export default function App() {
                 In Notion open Settings → Workspace → Export (or a page's ⋯ menu
                 → Export), choose <i>Markdown &amp; CSV</i> with subpages, and
                 import the ZIP here. Pages keep their nesting, images and links;
-                databases become Collections, and toggles become Tap to Learn
-                questions. Write <code>{"{{answer}}"}</code> in Markdown to make
+                databases become Collections, and toggles stay toggles. Write
+                <code>{"{{answer}}"}</code> in Markdown to make
                 a fill-in-the-blank. <b>Add pages from a Slate file</b> adds the
                 pages from another Slate backup or page pack without replacing
                 anything.

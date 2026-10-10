@@ -21,9 +21,9 @@ async function loadMarkdown() {
   return { ...mod, cleanup: () => rm(dir, { recursive: true, force: true }) };
 }
 
-test("Notion toggles become sections and Tap to Learn questions", async () => {
+test("Notion toggles stay toggles, nested ones included", async () => {
   const { parseRich, cleanup } = await loadMarkdown();
-  const doc = parseRich(`# Tap to Learn
+  const doc = parseRich(`# Toggles
 
 - Round 1 · The big four
     - Name the 4 primary tissue types
@@ -39,10 +39,54 @@ test("Notion toggles become sections and Tap to Learn questions", async () => {
 \tSimple squamous.
 </details>`);
   const types = doc.content.map((n) => n.type);
-  assert.deepEqual(types, ["heading", "heading", "reveal", "taskList", "bulletList", "reveal"]);
-  assert.equal(doc.content[1].content[0].text, "Round 1 · The big four");
-  assert.equal(doc.content[2].attrs.question, "Name the 4 primary tissue types");
-  assert.equal(doc.content[5].attrs.question, "One layer, flat cells?");
+  assert.deepEqual(types, ["heading", "details", "bulletList", "details"]);
+  const [summary, body] = doc.content[1].content;
+  assert.equal(summary.content[0].text, "Round 1 · The big four");
+  assert.deepEqual(body.content.map((n) => n.type), ["details", "taskList"]);
+  assert.equal(body.content[0].content[0].content[0].text, "Name the 4 primary tissue types");
+  assert.equal(doc.content[3].content[0].content[0].text, "One layer, flat cells?");
+  assert.ok(doc.content[1].attrs.id && doc.content[1].attrs.id !== body.content[0].attrs.id);
+  await cleanup();
+});
+
+test("Notion toggle headings become sections", async () => {
+  const { parseRich, cleanup } = await loadMarkdown();
+  const doc = parseRich(`- ## Week 1
+    Cells are the basic unit of life.
+
+    - Mitochondria?
+
+        The powerhouse.`);
+  assert.deepEqual(doc.content.map((n) => n.type), ["heading", "paragraph", "details"]);
+  assert.equal(doc.content[0].attrs.level, 2);
+  assert.equal(doc.content[0].content[0].text, "Week 1");
+  await cleanup();
+});
+
+test("Slate's <details> export reads back as a toggle", async () => {
+  const { parseRich, cleanup } = await loadMarkdown();
+  const doc = parseRich(`Intro
+
+<details>
+<summary>Is 2 &lt; 3?</summary>
+
+Yes, **always**.
+
+<details>
+<summary>Why?</summary>
+
+Counting.
+
+</details>
+
+</details>
+
+After`);
+  assert.deepEqual(doc.content.map((n) => n.type), ["paragraph", "details", "paragraph"]);
+  const [summary, body] = doc.content[1].content;
+  assert.equal(summary.content[0].text, "Is 2 < 3?");
+  assert.deepEqual(body.content.map((n) => n.type), ["paragraph", "details"]);
+  assert.equal(body.content[0].content[1].marks[0].type, "bold");
   await cleanup();
 });
 

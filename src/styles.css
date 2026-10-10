@@ -2758,82 +2758,75 @@ kbd {
   font-weight: 600;
 }
 
-/* Tap to Learn */
-.reveal-block {
-  border: 1px solid var(--line);
-  border-left: 3px solid var(--quiz);
-  background: var(--surface);
-  border-radius: 0 10px 10px 0;
-  margin: 18px 0;
-  padding: 10px 14px;
-}
-.reveal-head {
+/* Toggle */
+.toggle-block {
   display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 2px;
+  margin: 4px 0;
 }
-.reveal-badge {
+.toggle-block > .toggle-arrow {
+  flex: 0 0 auto;
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.6px;
-  text-transform: uppercase;
-  color: var(--quiz);
-  white-space: nowrap;
-}
-.reveal-question {
-  flex: 1 1 220px;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  font: inherit;
+  line-height: inherit;
+  margin-top: max(0px, calc((1lh - 24px) / 2 + 3px));
+  padding: 0;
   border: 0;
-  background: transparent;
-  color: var(--text);
-  font-weight: 650;
-  font-size: 16px;
-  padding: 6px 0;
-  outline: none;
-}
-.reveal-toggle {
-  background: var(--quiz-soft) !important;
-  color: var(--quiz) !important;
-  font-weight: 600;
-}
-.reveal-answer {
-  border-top: 1px dashed var(--line);
-  margin-top: 8px;
-  padding-top: 4px;
-}
-.reveal-grade {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  flex-wrap: wrap;
-  font-size: 13px;
+  border-radius: 4px;
+  background: transparent !important;
   color: var(--muted);
-  margin-top: 6px;
-}
-.reveal-grade button {
-  border: 1px solid var(--line);
-  padding: 4px 9px;
-  font-size: 13px;
-}
-.reveal-block.got {
-  border-left-color: var(--good);
-}
-.reveal-block.missed {
-  border-left-color: var(--bad);
-}
-.reveal-static {
-  border-left: 3px solid var(--quiz);
-  padding: 8px 14px;
-  margin: 14px 0;
-  background: var(--surface-alt);
-  border-radius: 0 8px 8px 0;
-}
-.reveal-static summary {
-  font-weight: 650;
   cursor: pointer;
+  transition: transform 0.15s ease;
+  user-select: none;
+}
+.toggle-block > .toggle-arrow:hover {
+  background: var(--surface-alt) !important;
+  color: var(--text);
+}
+.toggle-block.is-open > .toggle-arrow {
+  transform: rotate(90deg);
+}
+.toggle-block > .toggle-body {
+  flex: 1;
+  min-width: 0;
+}
+.toggle-block summary {
+  display: block;
+  list-style: none;
+  padding: 3px 0;
+  cursor: text;
+}
+.toggle-block summary::-webkit-details-marker {
+  display: none;
+}
+.toggle-block summary:has(> br:only-child)::before {
+  content: "Toggle";
+  color: var(--muted);
+  pointer-events: none;
+  float: left;
+  height: 0;
+}
+.toggle-block:not(.is-open) > .toggle-body > [data-type="detailsContent"] {
+  display: none;
+}
+.toggle-block > .toggle-body > [data-type="detailsContent"] > :first-child {
+  margin-top: 2px;
+}
+/* Toggles outside the editor (Teach me, previews) are plain <details>. */
+details[data-id] {
+  margin: 6px 0;
+}
+details[data-id] > summary {
+  cursor: pointer;
+  padding: 3px 0;
+}
+details[data-id] > [data-type="detailsContent"] {
+  padding-left: 22px;
 }
 
 /* Fill in the blank */

@@ -1,5 +1,6 @@
 import type { JSONContent } from "@tiptap/react";
 import { plain } from "./types";
+import { studyToggle } from "./toggle.mjs";
 import type { LabelBox, Question } from "./study";
 
 const words = (s: string) => s.split(/\s+/).filter(Boolean).length;
@@ -23,7 +24,7 @@ function clozeText(n: JSONContent): string {
     .join("");
 }
 
-/** Find a blank even inside a reveal or another nested editor block. */
+/** Find a blank even inside a toggle or another nested editor block. */
 export function currentBlank(content: JSONContent, pageId: string, key: string): Question | null {
   if (content.type === "paragraph" || content.type === "heading") {
     const question = questionsFrom(content, pageId).find((q) => q.kind === "blank" && q.key === key);
@@ -41,18 +42,30 @@ export function questionsFrom(node: JSONContent, pageId: string, render?: (nodes
   const out: Question[] = [];
   const autos: Question[] = [];
   function walk(n: JSONContent) {
-    if (n.type === "reveal") {
+    if (n.type === "details" || n.type === "reveal") {
+      // The summary is the prompt and the content is the answer, graded by
+      // the learner in Study. The "reveal" key keeps older review history.
+      const toggle = studyToggle(n);
+      if (!toggle) {
+        if (n.type === "details") n.content?.forEach(walk);
+        return;
+      }
       out.push({
-        key: "reveal:" + n.attrs?.id,
+        key: "reveal:" + toggle.id,
         kind: "reveal",
         mode: "self",
         pageId,
-        prompt: String(n.attrs?.question || "What do you remember here?"),
-        answer: plain(n),
-        ...(render ? { answerHtml: render(n.content || []) } : {}),
-        
-        ref: { node: String(n.attrs?.id) },
+        prompt: toggle.summary,
+        answer: toggle.answer,
+        ...(render ? { answerHtml: render(toggle.blocks) } : {}),
+        ref: { node: toggle.id },
       });
+      // Toggles nested inside are questions of their own.
+      const nested = (b: JSONContent): void => {
+        if (b.type === "details") walk(b);
+        else b.content?.forEach(nested);
+      };
+      toggle.blocks.forEach(nested);
       return;
     }
     if (n.type === "labelImage") {

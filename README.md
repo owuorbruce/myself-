@@ -64,7 +64,7 @@ GitHub setup documentation: https://docs.github.com/en/pages/getting-started-wit
 | Navigation   | Search and command menu, page tabs, split view with two editors, outline, focus mode, backlinks                                              |
 | Collections  | Editable custom fields: text, number, date, checkbox, select, URL; table, board, calendar agenda, list, gallery; assignment tracker template |
 | Tasks        | Dedicated tasks with due dates, priority, and source pages; aggregated checklists from notes                                                 |
-| Interactive  | Tap to Learn questions, fill-in-the-blanks, label-the-image diagrams with green / amber / red feedback, right inside your notes                |
+| Interactive  | Toggles that open and close (and quiz you in Study), fill-in-the-blanks, label-the-image diagrams with green / amber / red feedback           |
 | Teach me     | Turns any page into small teach-then-quiz bites with hearts, XP, pop quizzes and retries of what you missed                                  |
 | Studying     | Daily 5-minute review, weak-spot tracking, study streak, spaced repetition for flashcards and quiz blocks, exam / definition markers          |
 | Files        | Local attachments, image insertion, PDF and image preview, text/PDF attachment search, offline OCR for scans and photos                      |
@@ -79,10 +79,12 @@ GitHub setup documentation: https://docs.github.com/en/pages/getting-started-wit
 
 Slate is built for people who'd rather tap than read a wall of text.
 
-- **Tap to Learn.** Type `/tap` (or press the 👁 toolbar button). Write a question, then the answer underneath. The answer stays hidden until you tap.
+- **Toggles.** Type `>` and a space at the start of a line, or `/toggle`, or press the ▸ toolbar button. Write a one-line summary, then anything underneath: text, lists, images, even other toggles. Click the arrow to open or close it. Each device remembers which toggles you left open. Quotes now start with `"` and a space, as in Notion.
+- **Toggles in Study.** A toggle with a summary and some text inside becomes a review question: the summary is the prompt and the content is the answer. You grade yourself in Study, not in the note. A toggle that only holds other toggles works like a section, and the toggles inside it become the questions.
+- **Older Tap to Learn blocks** turn into toggles automatically when a page loads, a backup is restored or synced notes arrive. The question becomes the summary, the answer becomes the content, and their review history carries over.
 - **Fill in the blank.** Select a word and press the blank button in the toolbar, or type `/blank`. Type your guess into the gap and press Enter. Green is right, amber is a near miss, red is wrong. Separate accepted answers with `|`, like `osteoclasts|osteoclast`.
 - **Label the image.** Type `/label` and pick a diagram or lab slide. Drag boxes over its labels and type each answer. Press **Done**, then fill in the boxes and press **Check**. **Retry mistakes** clears only the wrong ones.
-- **Teach me.** Press **Teach me** on any page. Slate splits it into sections (by heading) and small bites, quizzes you right after each bite, gives pop quizzes every few sections, and brings back what you miss. Your blanks, Tap to Learn questions, labelled images and **bold key terms** become the questions.
+- **Teach me.** Press **Teach me** on any page. Slate splits it into sections (by heading) and small bites, quizzes you right after each bite, gives pop quizzes every few sections, and brings back what you miss. Your blanks, toggles, labelled images and **bold key terms** become the questions.
 - **Study → Today.** A short daily review that puts your weak spots first, then anything due. Answer one question a day to keep your streak.
 - **Study → Weak spots.** Everything you've missed, worst first, with a button to practise just those.
 
@@ -112,13 +114,15 @@ Sync is optional and uses a private GitHub repository you own, so there is still
 
 Slate syncs when it opens, about 20 seconds after you edit, every 5 minutes, and when you switch away. The cloud button in the top bar syncs right away and shows the status. If the same page was edited on both devices before syncing, both versions are kept and the other one is named "(from other device)". Permanent deletions sync too.
 
+Update Slate on every device you sync before syncing toggles: older versions of Slate can't read them and stop syncing until they're updated.
+
 The token is stored only in that browser's device storage. It is never put in backups or in the synced copy. Slate refuses to sync to a public repository.
 
 ## Import from Notion
 
 In Notion, export with **Markdown & CSV** and **Include subpages** (Settings → Workspace → Export, or a page's ⋯ menu → Export). In Slate open **Settings & backups → Import a Notion export (.zip)**.
 
-Pages keep their nesting, images, tables, callouts, checklists and links between pages. Toggles become Tap to Learn questions (a toggle that holds other toggles becomes a section heading), and slides embedded as HTML files become images. Other files become attachments. Databases become Collections, and their row pages are imported as pages. Everything lands under a page called **Imported from Notion**. Files over 25 MB are skipped.
+Pages keep their nesting, images, tables, callouts, checklists and links between pages. Toggles stay toggles, including toggles inside toggles. A Notion toggle heading becomes a heading with its content underneath, so Teach me still splits the page into sections. Slides embedded as HTML files become images. Other files become attachments. Databases become Collections, and their row pages are imported as pages. Everything lands under a page called **Imported from Notion**. Files over 25 MB are skipped.
 
 ## Add pages from a Slate file
 
@@ -237,7 +241,8 @@ The Windows release workflow installs and launches the actual installer output t
 
 - `src/App.tsx`: workspace UI, page navigation, tasks, study, backups, save queue.
 - `src/Editor.tsx`: Tiptap editor and slash commands.
-- `src/blocks.tsx`: Tap to Learn, fill-in-the-blank and label-the-image editor blocks.
+- `src/blocks.tsx`, `src/toggle-view.ts`: toggle, fill-in-the-blank and label-the-image editor blocks.
+- `src/toggle.mjs`: toggle helpers for Study and the conversion of older Tap to Learn blocks.
 - `src/Learn.tsx`, `src/lesson.ts`: Teach-me mode and the review session.
 - `src/study.ts`, `src/grading.mjs`: answer grading, spaced repetition, weak spots and streaks.
 - `src/sync.ts`, `src/sync-merge.mjs`: GitHub sync and merging between devices.
@@ -262,7 +267,7 @@ The Windows release workflow installs and launches the actual installer output t
 
 This version is a personal workspace. It has no real-time collaboration, a packaged Linux/macOS installer, encrypted storage, collection formulas/relations, handwriting recognition, semantic/vector search, or unattended AI execution. Windows has a desktop installer; the browser version can also be installed as a PWA. Sync needs a GitHub account and a private repository.
 
-Calendar is a date-grouped agenda view. Reviews use an SM-2 style spaced repetition schedule rather than a full Anki/FSRS engine. Teach me builds questions from your own notes; it doesn't write explanations of its own. Markdown import covers headings, basic formatting, lists, checklists, quotes, links, and fenced code; more elaborate Markdown constructs are kept as text. Imported remote images are not fetched automatically.
+Calendar is a date-grouped agenda view. Reviews use an SM-2 style spaced repetition schedule rather than a full Anki/FSRS engine. Teach me builds questions from your own notes; it doesn't write explanations of its own. Markdown import covers headings, basic formatting, lists, checklists, quotes, links, fenced code and `<details><summary>…</summary>…</details>` toggles (which is also how toggles are exported); more elaborate Markdown constructs are kept as text. Imported remote images are not fetched automatically.
 
 Attachment limit: 25 MB each. Inline image limit: under 5 MB. PDF indexing: up to 300 pages and 1 million text characters; larger PDFs remain attached without full indexing. Backup restore: under 200 MB compressed and total attachment bytes. Structured backup text is limited to 30 MB. These are client-side guardrails, not paid credits.
 

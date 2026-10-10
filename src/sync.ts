@@ -2,6 +2,7 @@ import { getFile, getLocal, putFile, setLocal, normalize } from "./storage";
 import { mergeWorkspaces, rebaseEdits } from "./sync-merge.mjs";
 export { rebaseEdits };
 import { validateWorkspace } from "./validation.mjs";
+import { migrateWorkspace } from "./toggle.mjs";
 import { uid, type Workspace } from "./types";
 
 /** Sync keeps a copy of the workspace in a private GitHub repository. */
@@ -169,7 +170,10 @@ export async function syncNow(
   let data = local;
   let conflicts: string[] = [];
   if (remote && remote.sha !== state.sha) {
-    const base = await getLocal<Workspace>("syncBase");
+    // Compare against the base in today's format, so turning Tap to Learn
+    // blocks into toggles doesn't count as an edit on either device.
+    const saved = await getLocal<Workspace>("syncBase");
+    const base = saved && migrateWorkspace(saved);
     const merged = mergeWorkspaces(local, remote.data, { ...state, base }, uid);
     data = merged.data;
     conflicts = merged.conflicts;

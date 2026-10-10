@@ -27,6 +27,9 @@ const types = new Set([
   "callout",
   "pageLink",
   "reveal",
+  "details",
+  "detailsSummary",
+  "detailsContent",
   "blank",
   "labelImage",
 ]);
@@ -63,7 +66,9 @@ export function validDoc(doc, depth = 0) {
     if (doc.type === "image" && !imageData.test(doc.attrs.src || ""))
       return false;
     if (doc.type === "blank" && !str(doc.attrs.answer)) return false;
+    // "reveal" is the older Tap to Learn block, still accepted in old backups and synced data.
     if (doc.type === "reveal" && !str(doc.attrs.question || "")) return false;
+    if (doc.type === "details" && !str(doc.attrs.id || "")) return false;
     if (doc.type === "labelImage") {
       if (!imageData.test(doc.attrs.src || "")) return false;
       const boxes = doc.attrs.boxes || [];

@@ -21,13 +21,15 @@ import {
   BookOpen,
   PanelRight,
   Paperclip,
-  Eye,
+  ChevronRight,
   TextCursorInput,
   Tag,
   GraduationCap,
 } from "lucide-react";
 import { extensions } from "./extensions";
 import { interactiveExtensions } from "./blocks";
+import { insertToggle } from "./toggle-view";
+import { migrateContent } from "./toggle.mjs";
 import { plain, uid, type Page, type Workspace } from "./types";
 import type { Attempt } from "./study";
 const interactiveNames = new Set(interactiveExtensions.map((e) => e.name));
@@ -44,7 +46,7 @@ const slashCommands = [
   ["Numbered list", "Step by step", "ordered"],
   ["Checklist", "Keep track of progress", "task"],
   ["Quote", "A passage worth saving", "quote"],
-  ["Tap to Learn", "A question with a hidden answer", "reveal"],
+  ["Toggle", "Click the arrow to show or hide what's inside", "toggle"],
   ["Fill in the blank", "A gap you type the answer into", "blank"],
   ["Label an image", "Cover labels on a diagram and quiz yourself", "label"],
   ["Callout", "Make something stand out", "note"],
@@ -106,7 +108,7 @@ export default function NoteEditor({
           placeholder: "Write something, or type / for commands…",
         }),
       ],
-      content: page.content,
+      content: migrateContent(page.content),
       editorProps: {
         attributes: {
           class: "note-content",
@@ -150,7 +152,7 @@ export default function NoteEditor({
       editor &&
       JSON.stringify(editor.getJSON()) !== JSON.stringify(page.content)
     )
-      editor.commands.setContent(page.content, { emitUpdate: false });
+      editor.commands.setContent(migrateContent(page.content), { emitUpdate: false });
   }, [page.content, editor]);
   useEffect(() => {
     const handle = (e: Event) => {
@@ -210,6 +212,17 @@ export default function NoteEditor({
       imageInput.current?.click();
       return;
     }
+    if (type === "toggle") {
+      if (slash)
+        editor
+          .chain()
+          .focus()
+          .deleteRange({ from: slash.from, to: slash.to })
+          .run();
+      setSlash(null);
+      insertToggle(editor);
+      return;
+    }
     const { from, to } = editor.state.selection;
     const selected = editor.state.doc.textBetween(from, to, " ").trim();
     let chain = editor.chain().focus();
@@ -233,21 +246,6 @@ export default function NoteEditor({
           .run();
         break;
       }
-      case "reveal":
-        chain
-          .insertContent({
-            type: "reveal",
-            attrs: { id: uid(), question: "" },
-            content: [
-              {
-                type: "paragraph",
-                content:
-                  !slash && selected ? [{ type: "text", text: selected }] : [],
-              },
-            ],
-          })
-          .run();
-        break;
       case "text":
         chain.setParagraph().run();
         break;
@@ -447,8 +445,8 @@ export default function NoteEditor({
         {tool("Table", Table, () => command("table"))}
         {tool("Divider", Minus, () => command("divider"))}
         <span className="toolbar-separator" />
-        {tool("Tap to Learn: hide an answer behind a question", Eye, () =>
-          command("reveal"),
+        {tool("Toggle: content that opens and closes", ChevronRight, () =>
+          command("toggle"),
         )}
         {tool(
           "Fill in the blank (select a word first)",

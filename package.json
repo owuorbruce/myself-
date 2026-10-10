@@ -16,6 +16,8 @@
   "dependencies": {
     "@tesseract.js-data/eng": "^1.0.0",
     "@tiptap/core": "^3.31.4",
+    "@tiptap/extension-blockquote": "^3.31.4",
+    "@tiptap/extension-details": "^3.31.4",
     "@tiptap/extension-highlight": "^3.0.0",
     "@tiptap/extension-image": "^3.0.0",
     "@tiptap/extension-placeholder": "^3.0.0",

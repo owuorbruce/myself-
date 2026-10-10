@@ -159,9 +159,15 @@ test("automatic questions become invalid after their source changes", () => {
   assert.equal(study.itemQuestion(i, [page("p")]), null);
 });
 
-test("lesson question extraction keeps formatted reveal answers", () => {
-  const node = { type: "reveal", attrs: { id: "r", question: "Q" }, content: [{ type: "paragraph", content: [{ type: "text", text: "A" }] }] };
-  assert.equal(questions.questionsFrom(node, "p", () => "<p>A</p>")[0].answerHtml, "<p>A</p>");
+test("lesson question extraction keeps formatted toggle answers", () => {
+  const node = { type: "details", attrs: { id: "r" }, content: [
+    { type: "detailsSummary", content: [{ type: "text", text: "Q" }] },
+    { type: "detailsContent", content: [{ type: "paragraph", content: [{ type: "text", text: "A" }] }] },
+  ] };
+  const q = questions.questionsFrom(node, "p", () => "<p>A</p>")[0];
+  assert.equal(q.answerHtml, "<p>A</p>");
+  assert.equal(q.key, "reveal:r");
+  assert.equal(q.mode, "self");
 });
 
 test("backup replacement syncs after a previously clean sync", async () => {
@@ -237,7 +243,10 @@ test("successful attachment transfer finishes before metadata and stores baselin
 
 test("nested blanks remain available using their current answers", () => {
   const p = blankPage("Nested current answer");
-  p.content.content = [{ type: "reveal", attrs: { id: "reveal", question: "Q" }, content: p.content.content }];
+  p.content.content = [{ type: "details", attrs: { id: "t" }, content: [
+    { type: "detailsSummary", content: [{ type: "text", text: "Q" }] },
+    { type: "detailsContent", content: p.content.content },
+  ] }];
   assert.equal(study.itemQuestion(item, [p]).answer, "Nested current answer");
 });
 
