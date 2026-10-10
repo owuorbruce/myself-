@@ -2,7 +2,7 @@
 
 An offline personal workspace for notes, coursework, projects, tasks, and study cards, where your notes quiz you back.
 
-**Notes work offline without an account or subscription.** Optional ChatGPT sign-in in the local app uses eligible usage from your existing plan; no API key is required. The hosted app also includes a copy-and-paste workflow.
+**Notes work offline without an account or subscription.** In the desktop app, **Ask AI** lets you talk through your notes with Qwen (the default), Mistral, Gemini, Claude, ChatGPT (with your plan's sign-in), any OpenAI-compatible service, or a model running on your own computer with Ollama. The hosted app includes a copy-and-paste workflow.
 
 ![Slate workspace preview](preview.png)
 
@@ -19,7 +19,7 @@ Open the hosted app: https://owuorbruce.github.io/myself-/
 3. Run **Slate-Setup.exe**, then open **Slate** from your desktop or Start menu.
 4. Restore your backup in **Settings & backups**. The first-run banner explains this move.
 
-The installer includes its own runtime. Node.js, a command window and a browser address are not required. Notes stay in the app's own local profile; they are separate from Chrome/Edge website storage. Your saved local ChatGPT connection can be reused because credentials remain in the existing protected user directory. ChatGPT sign-in opens your normal browser and replies appear back in Slate.
+The installer includes its own runtime. Node.js, a command window and a browser address are not required. Notes stay in the app's own local profile; they are separate from Chrome/Edge website storage. Your saved ChatGPT connection and AI provider keys can be reused because they stay in the protected user directory (`~/.slate`). ChatGPT sign-in opens your normal browser and replies appear back in Slate.
 
 Closing the window saves pending workspace edits first. If saving fails, Slate asks you to return and export your work or explicitly close anyway. App updates preserve the workspace profile and refresh only application caches. Uninstalling does not intentionally delete your notes, but keep regular backups.
 
@@ -72,7 +72,7 @@ GitHub setup documentation: https://docs.github.com/en/pages/getting-started-wit
 | Recovery     | Automatic snapshots, manual snapshots, restore history, trash and restore pages, full ZIP backup and restore                                 |
 | Portability  | Notion export import, Markdown export and import (tables, `{{blanks}}`), structured JSON backup, attachment files included                   |
 | Appearance   | Match my device, light, dark, sepia (moon button in the top bar); sans serif or serif editor; wide layout                                     |
-| AI           | Local ChatGPT sign-in, streamed answers, follow-ups, save-as-note and flashcards; hosted copy/paste fallback                       |
+| AI           | Ask AI chat with Qwen, Mistral, Gemini, Claude, ChatGPT, OpenAI-compatible services and local Ollama models; proposed page edits with Apply / Undo; quizzes from your notes |
 | Offline      | Notes, search, collections, checklists, tasks, flashcards, existing attachments, and backups                                                 |
 
 ## Learn by doing
@@ -134,24 +134,39 @@ When you attach a photo or a scanned PDF, Slate reads the printed text on your d
 
 The text reader (about 11 MB) downloads the first time it's used, then works offline. **Download text reading for offline use** in Settings fetches it ahead of time. It reads English printed text; handwriting is hit and miss.
 
-## ChatGPT inside Slate — no API key
+## Ask AI
 
-The local launcher supports OpenAI's [Sign in with ChatGPT for open-source apps](https://developers.openai.com/siwc/token-sharing-open-source). Eligible ChatGPT Plus or Pro accounts can share their plan allowance or available credits with Slate. This preview depends on account eligibility, permissions and usage limits. Slate does not fall back to separately billed API usage.
+Open **✦ Ask AI** on any page (or select text first). Type in the box at the bottom: **Enter** sends, **Shift + Enter** starts a new line. The small **Sending:** line above the box shows exactly which notes go to the AI. Tap it to choose this page, this page and its subpages, the selected text, your exam-marked material, specific pages, or no notes. Pages you name in a message are added to it.
 
-1. If you use the hosted website, export your workspace in **Settings & backups** first.
-2. [Download Slate for Windows](https://github.com/owuorbruce/myself-/releases/latest/download/Slate-Setup.exe), run the installer and open **Slate**. The source archive launcher remains available on other platforms.
-3. Restore your exported workspace in **Settings & backups** if you are moving from the hosted or browser version.
-4. In **Settings & backups → ChatGPT in Slate**, or a note's **Ask ChatGPT** panel, choose **Continue with ChatGPT**. Sign in in your browser and allow Slate to use your ChatGPT plan.
-5. Return to Slate, choose an available model, select your notes or highlighted text, choose an action and press **Ask ChatGPT**.
-6. Read replies inside Slate, ask follow-up questions, copy the answer, save it as a new child note, or add generated flashcards after validation. Partial and failed replies cannot be saved through these controls.
+The picker inside the box lists every connected AI's models, grouped by provider (**Qwen › qwen-plus**, **Mistral › …**, **Qwen (local) › qwen3.5:4b**). Model lists come from each provider, with **Reload** if one fails. Slate remembers your last pick; switching mid-conversation keeps the conversation. New conversations start on **Qwen** until you pick something else.
 
-Keep Slate open. If using the source archive, keep its launcher open. AI replies need an internet connection; your normal note-taking features still work offline. The hosted GitHub Pages version provides these local setup steps and the existing **Use copy and paste instead** workflow. It cannot run the local sign-in helper itself.
+### Connect an AI
 
-Only pressing **Ask ChatGPT** or **Send follow-up** sends the selected prompt/history to OpenAI. Replies stay in the current panel until you choose to save them. Slate does not import your ChatGPT conversations or personal memory. Changing accounts clears the current answer and conversation.
+Open **Settings & backups → AI providers**:
 
-Access, refresh and verified identity tokens are kept by the local helper at `~/.slate/chatgpt/accounts.json`, outside the project and workspace backups. `SLATE_CHATGPT_DIR` can override the credential directory for an isolated local runtime. On Unix, the directory is restricted to its owner and the file has mode `0600`. Windows uses the local user's filesystem permissions. These credentials are not encrypted; do not share this file. Sign out attempts remote revocation and clears local tokens while retaining the account registration for future sign-in. If revocation cannot be confirmed, Slate tells you to disconnect it in ChatGPT settings. Manage plan access and limits in **ChatGPT Settings → Usage**.
+| Provider | What you need |
+| --- | --- |
+| **Qwen** (default) | An Alibaba Cloud Model Studio API key. Choose its region: International (Singapore) is the default, then US (Virginia), China (Beijing) and China (Hong Kong). Keys only work with their own region's address, and you can paste a workspace address (for example `https://<workspace>.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1`) instead. |
+| **Mistral**, **Gemini** (Google AI API), **Claude** (Anthropic API) | An API key from each provider. |
+| **ChatGPT** | Your ChatGPT plan through OpenAI's [Sign in with ChatGPT for open-source apps](https://developers.openai.com/siwc/token-sharing-open-source), unchanged: choose **Continue with ChatGPT** and allow plan usage. No API key; eligible Plus or Pro accounts only. |
+| **OpenAI-compatible** | A name, address and key. Presets: OpenRouter, Groq, Cerebras, GitHub Models and NVIDIA NIM. Add as many as you like. |
+| **Ollama** | Nothing: install [Ollama](https://ollama.com/download) and Slate finds it at `http://localhost:11434`. Run `ollama pull qwen3.5:4b` (or `qwen3.5:9b`) for **Qwen (local)**, the model Slate uses when you're offline. |
 
-Model choices come from the connected account. Usage-limit and eligibility failures appear in the answer panel, including failures that arrive after a reply starts. Your first real sign-in and response must be checked with your own account; automated tests use simulated OpenAI responses.
+Keys are kept by the Slate helper on your computer in `~/.slate/ai/providers.json` (or `SLATE_AI_DIR`), next to the ChatGPT sign-in in `~/.slate/chatgpt`, outside your workspace and backups, with the same owner-only permissions. They're never shown to the page again or sent anywhere except their own provider's address, and Slate refuses redirects. Each provider has one key; Slate never switches between keys to get around limits. The files aren't encrypted, so don't share them.
+
+### Working with your notes
+
+Models that can call tools can search and read the shared pages and propose changes: a new page, an addition to a page, a rewrite or a task. Each proposal appears in the chat as a preview (the new page, or before and after) with **Apply** and **Discard**. Nothing is written until you press **Apply**; a snapshot is kept first, and **Undo** puts things back (a page it created goes to Trash). Several proposals in one reply are applied or discarded one by one. There's no way for the AI to delete pages.
+
+Ask it to **quiz you** on a page, a folder or your exam-marked material: it asks one question at a time from those notes, then shows whether you were right, what was missing and the source page. At the end you get a score, and **Add to flashcards** puts any question you missed into Study's review schedule. **Save as new note**, **Copy** and **Add these flashcards** work the same with every provider.
+
+Models that can't call tools are marked **answers only** in the picker and simply answer. If a model refuses tools the first time, Slate remembers that on this device. **Settings → AI providers → Check tool calling** makes one tiny real request to test a model.
+
+### Limits and offline
+
+If a provider says you've hit its rate limit, Slate shows when to try again and keeps your message in the box. It doesn't retry by itself. Offline, the picker shows only models on this computer and says that online AIs need internet; if no local model is set up, sending is turned off. Everything else in Slate keeps working offline.
+
+AI needs the desktop app or the source launcher, which run the local helper. The hosted GitHub Pages version offers **Copy prompt** instead. Only what you send (your message, the conversation so far and the notes on the **Sending** line) goes to the provider you picked. Slate does not import your provider-side conversations or memory.
 
 ## Offline and storage
 
@@ -259,9 +274,12 @@ The Windows release workflow installs and launches the actual installer output t
 - `.github/workflows/desktop.yml`: Windows build, installed-app checks and verified release download.
 - `desktop/`: Electron main process, restricted preload bridge, sign-in handoff and package checks.
 - `electron-builder.config.cjs`: bundled runtime and per-user Windows installer.
-- `run-slate.mjs`: dependency-free localhost launcher for the prebuilt app and ChatGPT helper.
+- `run-slate.mjs`: dependency-free localhost launcher for the prebuilt app and the AI helper.
 - `server/chatgpt-auth.mjs`, `server/chatgpt-router.mjs`: local OAuth, credential storage, model catalog and response streaming.
-- `src/ChatGPTUI.tsx`, `src/chatgpt.ts`: ChatGPT settings, sign-in and answer panel.
+- `server/ai/`: AI providers (one file each in `server/ai/providers/`), key storage and the `/api/ai` routes.
+- `src/AIChat.tsx`, `src/ai.ts`, `src/ai-catalog.ts`: the Ask AI panel, its client and the model picker.
+- `src/AISettings.tsx`, `src/ChatGPTUI.tsx`, `src/chatgpt.ts`: AI provider settings and the ChatGPT sign-in.
+- `src/note-tools.mjs`, `src/doc-markdown.mjs`: the note tools the AI uses, and pages as Markdown.
 
 ## Current boundaries
 

@@ -4,7 +4,7 @@ module.exports = {
   asar: true,
   files: [ 'main.mjs', 'preload.cjs', 'security.mjs', 'smoke.mjs', 'package.json',
     { from: '../dist', to: 'dist', filter: ['**/*'] },
-    { from: '../server', to: 'server', filter: ['*.mjs'] },
+    { from: '../server', to: 'server', filter: ['**/*.mjs'] },
     { from: '../LICENSE', to: 'LICENSE' },
   ],
   win: { target: [{ target: 'nsis', arch: ['x64'] }], icon: 'public/icon-512.png', executableName: 'Slate', signAndEditExecutable: true },

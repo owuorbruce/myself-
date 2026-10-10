@@ -11,6 +11,7 @@ if (smokeMode) {
   if (!smokeDir || !['write', 'read'].includes(smokeMode)) throw Error('Smoke checks require an isolated profile.');
   app.setPath('userData', path.join(smokeDir, 'profile'));
   process.env.SLATE_CHATGPT_DIR = path.join(smokeDir, 'auth');
+  process.env.SLATE_AI_DIR = path.join(smokeDir, 'ai');
 }
 const firstInstance = app.requestSingleInstanceLock();
 let window, local, runtime, assetRoot, closeReady = false, closing = false, closeTimer, smokeSignIn = false;

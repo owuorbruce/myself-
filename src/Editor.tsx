@@ -508,7 +508,7 @@ export default function NoteEditor({
         <button className="learn-button" onClick={onLearn}>
           <GraduationCap size={15} /> Teach me
         </button>
-        <button onClick={onAI}>✦ Ask ChatGPT</button>
+        <button onClick={onAI}>✦ Ask AI</button>
         <button aria-label="Page outline" onClick={onOutline}>
           <PanelRight size={16} />
         </button>

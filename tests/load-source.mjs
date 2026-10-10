@@ -7,14 +7,14 @@ import { pathToFileURL } from "node:url";
 
 export async function loadSource() {
   const dir = await mkdtemp(join(tmpdir(), "slate-tests-"));
-  for (const name of ["types", "questions", "study", "sync"]) {
+  for (const name of ["types", "questions", "study", "sync", "markdown"]) {
     const source = await readFile(new URL(`../src/${name}.ts`, import.meta.url), "utf8");
     const out = ts.transpileModule(source, {
       compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ESNext },
     }).outputText.replace(/from "(\.\/[^".]+)"/g, 'from "$1.mjs"');
     await writeFile(join(dir, name + ".mjs"), out);
   }
-  for (const name of ["grading", "sync-merge", "validation", "toggle"]) {
+  for (const name of ["grading", "sync-merge", "validation", "toggle", "doc-markdown", "note-tools"]) {
     await writeFile(join(dir, name + ".mjs"), await readFile(new URL(`../src/${name}.mjs`, import.meta.url)));
   }
   await writeFile(join(dir, "storage.mjs"), `
@@ -26,7 +26,7 @@ export async function loadSource() {
     export const normalize = (data) => data;
   `);
   const modules = {};
-  for (const name of ["types", "questions", "study", "sync", "storage"]) {
+  for (const name of ["types", "questions", "study", "sync", "storage", "markdown", "note-tools"]) {
     modules[name] = await import(pathToFileURL(join(dir, name + ".mjs")));
   }
   return { ...modules, cleanup: () => rm(dir, { recursive: true, force: true }) };

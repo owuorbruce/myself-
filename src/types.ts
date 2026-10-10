@@ -246,7 +246,7 @@ export function seed(): Workspace {
           "Type / in the editor for headings, checklists, tables, quizzes, and exam markers.",
           "Open “Interactive notes: example” in School and press Teach me.",
           "Link pages, attach readings, and turn key concepts into flashcards.",
-          "Use Ask ChatGPT to copy a prompt with your notes into ChatGPT.",
+          "Use Ask AI to talk through your notes with the AI you choose.",
         ].map((text) => ({
           type: "listItem",
           content: [{ type: "paragraph", content: [{ type: "text", text }] }],

@@ -5,7 +5,7 @@ const local = createLocalServer({ root: fileURLToPath(new URL('./dist/', import.
 try {
   await local.listen(4173);
   console.log('Slate is running at http://localhost:4173/');
-  console.log('ChatGPT sign-in is available in Settings and Ask ChatGPT. No API key is required.');
+  console.log('Connect AI providers in Settings & backups, then use Ask AI on any page.');
   console.log('Keep this window open. Press Ctrl+C to stop. Your notes stay saved.');
   if (process.env.SLATE_NO_OPEN !== '1') {
     const command = process.platform === 'win32' ? ['cmd', ['/c', 'start', '', 'http://localhost:4173/']]

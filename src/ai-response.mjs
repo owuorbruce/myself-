@@ -1,7 +1,7 @@
 export function flashcardsFromAnswer(text) {
   const source = text.trim().replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "");
   let cards;
-  try { cards = JSON.parse(source); } catch { throw new Error("ChatGPT didn't return a valid flashcard list. Ask it to return a JSON array with question and answer fields."); }
+  try { cards = JSON.parse(source); } catch { throw new Error("The answer isn't a valid flashcard list. Ask for a JSON array with question and answer fields."); }
   if (!Array.isArray(cards) || !cards.length || cards.length > 200 || !cards.every((c) =>
     c && typeof c.question === "string" && typeof c.answer === "string" &&
     c.question.trim() && c.answer.trim() && c.question.length <= 2000 && c.answer.length <= 2000))

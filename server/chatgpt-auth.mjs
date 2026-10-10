@@ -16,14 +16,16 @@ export class ChatGPTError extends Error {
 const same = (a, b) => typeof a === "string" && typeof b === "string" &&
   Buffer.byteLength(a) === Buffer.byteLength(b) && timingSafeEqual(Buffer.from(a), Buffer.from(b));
 
-export function fileStore(directory = process.env.SLATE_CHATGPT_DIR || path.join(homedir(), ".slate", "chatgpt")) {
-  const filename = path.join(directory, "accounts.json");
+/** Credentials kept outside the workspace and backups, readable only by this user. */
+export function fileStore(directory = process.env.SLATE_CHATGPT_DIR || path.join(homedir(), ".slate", "chatgpt"),
+  { file = "accounts.json", label = "ChatGPT connection" } = {}) {
+  const filename = path.join(directory, file);
   return {
     async read() {
       try { return JSON.parse(await readFile(filename, "utf8")); }
       catch (error) {
         if (error.code === "ENOENT") return null;
-        throw new ChatGPTError("Couldn't read the saved ChatGPT connection. Check your local storage permissions.", "credential_storage", 500);
+        throw new ChatGPTError(`Couldn't read the saved ${label}. Check your local storage permissions.`, "credential_storage", 500);
       }
     },
     async write(data) {
