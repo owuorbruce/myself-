@@ -72,6 +72,8 @@ export class Accounts {
       const apiKey = typeof input.apiKey === "string" && input.apiKey.trim() ? clean(input.apiKey, 500) : existing?.apiKey || "";
       if (/\s/.test(apiKey)) throw new AIError("An API key can't contain spaces.", "invalid_key");
       if (provider.needsKey && !apiKey) throw new AIError(`Paste your ${provider.label} API key.`, "missing_key");
+      const keyProblem = apiKey && provider.checkKey?.(apiKey);
+      if (keyProblem) throw new AIError(keyProblem, "invalid_key");
       const account = { id, type: provider.type, name: provider.label, ...(apiKey ? { apiKey } : {}) };
       if (provider.custom) {
         account.name = clean(input.name, 60) || "Custom AI";
