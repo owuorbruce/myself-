@@ -2,7 +2,6 @@ import { app, BrowserWindow, ipcMain, Menu, shell, dialog, session } from 'elect
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { mkdir, writeFile } from 'node:fs/promises';
-import { createMcpBridge } from '../server/mcp-bridge.mjs';
 import { DESKTOP_ORIGIN, DESKTOP_CSP, isAppPage, externalLink, signInTicket, providerLink } from './security.mjs';
 
 const smokeMode = process.argv.find(v => v.startsWith('--slate-smoke='))?.split('=')[1];
@@ -99,6 +98,7 @@ else void app.whenReady().then(async () => {
   ]));
   await createWindow();
   if (!smokeMode) {
+    const { createMcpBridge } = await import(pathToFileURL(path.join(source, 'server', 'mcp-bridge.mjs')).href);
     mcpBridge = createMcpBridge({
       userData: app.getPath('userData'),
       send: (id, name, args) => window?.webContents.send('slate:mcp-call', { id, name, args }),
