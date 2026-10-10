@@ -2,6 +2,7 @@ import { app, BrowserWindow, ipcMain, Menu, shell, dialog, session } from 'elect
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { mkdir, writeFile } from 'node:fs/promises';
+import { createMcpBridge } from '../server/mcp-bridge.mjs';
 import { DESKTOP_ORIGIN, DESKTOP_CSP, isAppPage, externalLink, signInTicket, providerLink } from './security.mjs';
 
 const smokeMode = process.argv.find(v => v.startsWith('--slate-smoke='))?.split('=')[1];
@@ -13,6 +14,7 @@ if (smokeMode) {
   process.env.SLATE_CHATGPT_DIR = path.join(smokeDir, 'auth');
 }
 const firstInstance = app.requestSingleInstanceLock();
+let mcpBridge;
 let window, local, runtime, assetRoot, closeReady = false, closing = false, closeTimer, smokeSignIn = false;
 const trusted = (event) => window && event.sender === window.webContents &&
   event.senderFrame === window.webContents.mainFrame && isAppPage(event.senderFrame.url);
@@ -67,9 +69,10 @@ ipcMain.on('slate:close-ready', async (event, saved) => {
   if (smokeMode) await report(true, 'Desktop loaded; isolated renderer and local helper verified; close save completed.');
   window.close();
 });
+ipcMain.on('slate:mcp-result', (event, id, response) => { if (trusted(event) && typeof id === 'string' && response && typeof response === 'object') mcpBridge?.result(id, response); });
 app.on('second-instance', () => { if (window) { if (window.isMinimized()) window.restore(); window.show(); window.focus(); } });
 app.on('window-all-closed', () => app.quit());
-app.on('will-quit', () => { void local?.close(); });
+app.on('will-quit', () => { void local?.close(); void mcpBridge?.close(); });
 if (!firstInstance) app.quit();
 // ESM must finish loading before Electron can emit ready.
 else void app.whenReady().then(async () => {
@@ -95,6 +98,23 @@ else void app.whenReady().then(async () => {
       { label: 'About Slate', click: () => void dialog.showMessageBox(window, { type: 'info', title: 'Slate', message: 'Slate ' + app.getVersion(), detail: 'Your notes, projects and study cards. Notes work offline; ChatGPT needs an internet connection.' }) } ] },
   ]));
   await createWindow();
+  if (!smokeMode) {
+    mcpBridge = createMcpBridge({
+      userData: app.getPath('userData'),
+      send: (id, name, args) => window?.webContents.send('slate:mcp-call', { id, name, args }),
+      confirm: async (name, args) => {
+        if (!window || window.isDestroyed()) return false;
+        const result = await dialog.showMessageBox(window, {
+          type: 'question', title: 'Approve Slate MCP change',
+          message: name === 'create_note' ? 'Create a note using MCP?' : 'Append text to a note using MCP?',
+          detail: name === 'create_note' ? String(args.title) : 'Note ID: ' + args.id + '\nPreview: ' + String(args.text).slice(0, 300),
+          buttons: ['Deny', 'Allow once'], defaultId: 0, cancelId: 0, noLink: true
+        });
+        return result.response === 1;
+      }
+    });
+    await mcpBridge.start();
+  }
   if (smokeMode) {
     const { runSmoke } = await import('./smoke.mjs');
     await runSmoke(window, smokeMode);
