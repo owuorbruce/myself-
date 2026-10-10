@@ -6,13 +6,11 @@ import path from 'node:path';
 import { tools, validateToolCall } from './mcp-tools.mjs';
 let buffer = Buffer.alloc(0);
 const config = process.env.SLATE_MCP_CONFIG ||
-  path.join(process.env.APPDATA || path.join(os.homedir(), '.config'), 'slate', 'slate-mcp.json');
+  path.join(process.env.APPDATA || path.join(os.homedir(), '.config'), 'Slate', 'slate-mcp.json');
 function respond(id, result, error) {
   if (id === undefined || id === null) return;
   const data = { jsonrpc: '2.0', id, ...(error ? { error: { code: -32603, message: error } } : { result }) };
-  const body = Buffer.from(JSON.stringify(data));
-  process.stdout.write('Content-Length: ' + body.length + '\r\n\r\n');
-  process.stdout.write(body);
+  process.stdout.write(JSON.stringify(data) + '\n');
 }
 async function handle(msg) {
   if (!msg || msg.jsonrpc !== '2.0') return;
@@ -48,14 +46,12 @@ process.stdin.on('data', chunk => {
   buffer = Buffer.concat([buffer, chunk]);
   if (buffer.length > 500000) process.exit(1);
   while (true) {
-    const end = buffer.indexOf('\r\n\r\n');
+    const end = buffer.indexOf(10);
     if (end < 0) break;
-    const headers = buffer.subarray(0, end).toString('utf8');
-    const length = Number(headers.match(/(?:^|\r\n)content-length:\s*(\d+)/i)?.[1]);
-    if (!Number.isSafeInteger(length) || length < 0 || length > 300000) process.exit(1);
-    if (buffer.length < end + 4 + length) break;
-    const body = buffer.subarray(end + 4, end + 4 + length);
-    buffer = buffer.subarray(end + 4 + length);
-    try { void handle(JSON.parse(body.toString('utf8'))); } catch { /* ignore invalid frames */ }
+    const line = buffer.subarray(0, end).toString('utf8').trim();
+    buffer = buffer.subarray(end + 1);
+    if (line) {
+      try { void handle(JSON.parse(line)); } catch { /* ignore invalid JSON */ }
+    }
   }
 });
