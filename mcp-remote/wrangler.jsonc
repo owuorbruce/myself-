@@ -1,0 +1,19 @@
+{
+  // Slate's hosted MCP server. See DEPLOY.md.
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "slate-mcp",
+  "main": "src/index.js",
+  "compatibility_date": "2026-09-01",
+  "kv_namespaces": [
+    // Created in step 4 of DEPLOY.md: paste the id it prints here.
+    { "binding": "OAUTH_KV", "id": "PASTE_YOUR_KV_NAMESPACE_ID" }
+  ],
+  "vars": {
+    // Your private Slate sync repository, the same one Slate syncs to.
+    "GITHUB_REPO": "your-name/slate-notes",
+    // The only GitHub account allowed to sign in.
+    "ALLOWED_GITHUB_USER": "your-github-username"
+  },
+  "observability": { "enabled": true }
+  // Secrets (never put these in this file): GITHUB_TOKEN, GITHUB_CLIENT_ID, GITHUB_CLIENT_SECRET.
+}

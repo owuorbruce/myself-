@@ -49,6 +49,8 @@ import { useRegisterSW } from "virtual:pwa-register/react";
 import { AIChat, type ScopeMode } from "./AIChat";
 import { AISettings } from "./AISettings";
 import { localAI } from "./ai";
+import { ConnectAIApp } from "./ConnectAIApp";
+import { runTool, applyChange } from "./note-tools.mjs";
 import NoteEditor from "./Editor";
 import { LearnView, ReviewSession } from "./Learn";
 import { buildLesson, lessonStats } from "./lesson";
@@ -385,6 +387,28 @@ export default function App() {
       return card ? scheduleCard(d, card, rating) : d;
     });
   }
+  // AI apps on this computer (local MCP) call the same note tools as Ask AI.
+  // Writes go through update() and flush(): the save queue, snapshots and sync.
+  useEffect(() => {
+    const bridge = window.slateDesktop?.mcp;
+    if (!bridge || !data) return;
+    return bridge.onCall(async (name, args) => {
+      if (restoring.current) throw new Error("Slate is restoring a backup. Try again in a moment.");
+      await flush();
+      const current = stateRef.current;
+      if (!current) throw new Error("Open Slate first: the workspace is still loading.");
+      const deps = { parse: parseRich, plain, newId: uid };
+      const { result, change } = runTool(name, args, { data: current, deps });
+      if (!change) return result;
+      update((d) => applyChange(d, change, deps).data);
+      await flush();
+      notify(change.kind === "create_page" ? `An AI app created “${change.title}”`
+        : change.kind === "update_page" ? `An AI app updated “${change.title}”. The previous version is in Page history.`
+        : `An AI app added a task: ${change.task.text}`);
+      return { ...(result as object), saved: true, ...(change.kind === "update_page" ? { undo: "The previous version is kept in Page history." } : {}) };
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [!!data]);
   useEffect(() => {
     let active = true;
     const stopClosing = window.slateDesktop?.onBeforeClose(async () => {
@@ -2705,6 +2729,7 @@ ${context.slice(0, 65000)}
               </label>
             </div>
             <AISettings onExport={() => void backup()} />
+            <ConnectAIApp />
             <div className="settings-section">
               <h2>Keep a copy</h2>
               <p>

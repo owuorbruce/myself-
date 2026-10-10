@@ -3602,3 +3602,18 @@ details[data-id] > [data-type="detailsContent"] {
   .ai-dock { position: fixed; left: 0; right: 0; bottom: var(--keyboard-inset, 0px); z-index: 45; padding: 8px 12px calc(8px + env(safe-area-inset-bottom)); border-top: 1px solid var(--line); background: color-mix(in srgb, var(--surface) 92%, transparent); backdrop-filter: blur(8px); }
   .ai-box { border-radius: 20px; }
 }
+/* Settings → Connect an AI app */
+.mcp-settings h3 { font-size: 15px; margin: 18px 0 6px; }
+.mcp-toggle { display: flex; align-items: center; gap: 8px; font-weight: 600; margin: 10px 0; }
+.mcp-token { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 8px 0; }
+.mcp-token code { background: var(--surface-alt); padding: 4px 8px; border-radius: 6px; overflow-wrap: anywhere; }
+.mcp-token button, .mcp-copy-head button { font-size: 12px; min-height: 28px; padding: 3px 8px; }
+.mcp-settings details { border: 1px solid var(--line); border-radius: 10px; padding: 8px 12px; margin: 8px 0; }
+.mcp-settings summary { cursor: pointer; font-weight: 600; }
+.mcp-copy { margin: 6px 0; }
+.mcp-copy-head { display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: var(--muted); }
+.mcp-copy pre { margin: 4px 0 0; padding: 8px 10px; background: var(--surface-alt); border-radius: 8px; overflow: auto; font-size: 12px; white-space: pre-wrap; overflow-wrap: anywhere; }
+.mcp-remote { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 8px; }
+.mcp-remote label { flex: 1 1 260px; }
+.mcp-log { list-style: none; padding: 0; margin: 0; font-size: 13px; display: grid; gap: 4px; }
+.mcp-log span { color: var(--muted); font-size: 12px; margin-left: 6px; }

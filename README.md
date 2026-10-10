@@ -168,6 +168,37 @@ If a provider says you've hit its rate limit, Slate shows when to try again and 
 
 AI needs the desktop app or the source launcher, which run the local helper. The hosted GitHub Pages version offers **Copy prompt** instead. Only what you send (your message, the conversation so far and the notes on the **Sending** line) goes to the provider you picked. Slate does not import your provider-side conversations or memory.
 
+## Connect an AI app (MCP)
+
+Like Notion's MCP server, Slate can let Claude, ChatGPT and other AI apps work with your notes. They get the same tools as Ask AI:
+
+| Tool | What it does |
+| --- | --- |
+| `search_pages(query)` | Matching pages with id, title, path and a snippet |
+| `list_pages(parent_id?)` | The page tree, a level at a time |
+| `get_page(id)` | Title and content as Markdown (toggles as `<details>`) |
+| `create_page(title, markdown, parent_id?)` | A new page, using Slate's Markdown importer |
+| `update_page(id, markdown, mode)` | `append` to a page or `replace` it; the previous version stays in Page history |
+| `list_tasks(status?)`, `create_task(title, due?, page_id?)` | Tasks |
+| `list_flashcards(page_id?)` | Study flashcards |
+
+There are no delete tools. It's off by default: turn it on in **Settings & backups → Connect an AI app**.
+
+### On this computer: Claude Desktop and Claude Code
+
+The Slate desktop app serves MCP at `http://127.0.0.1:4173/mcp` while it's open. It answers only apps on this computer that send the access token shown in Settings (Regenerate makes a new one), and refuses web pages: requests with a browser `Origin`, or for any host name other than `127.0.0.1`/`localhost`, are rejected. Calls run inside the Slate window through the same save queue, snapshots and sync bookkeeping as the editor, so a change an AI app makes is saved, synced and undoable like your own. If Slate isn't open, apps can't connect; if it's still loading, they're told to open Slate first.
+
+- **Claude Code:** `claude mcp add --transport http slate http://127.0.0.1:4173/mcp --header "Authorization: Bearer <token>"` (Settings shows it with your token filled in).
+- **Claude Desktop:** Settings shows a `claude_desktop_config.json` entry that uses `mcp-remote` (needs Node.js). Paste it under **Settings → Developer → Edit Config** and restart Claude Desktop.
+
+Settings lists the recent calls on this computer: tool names and times only, never content.
+
+### From anywhere: claude.ai, ChatGPT developer mode and phones
+
+These apps can only reach a public HTTPS server with OAuth sign-in. `mcp-remote/` is a small Cloudflare Worker that works with your **private sync repository** through the GitHub API, in exactly the format Slate syncs, so its changes arrive on your next sync. When Slate syncs at the same moment, it combines the two with Slate's own sync merge, so a page changed in both places keeps both versions. It supports OAuth 2.1 with dynamic client registration (what claude.ai and ChatGPT expect), and only your GitHub account can sign in. Its GitHub token is a Cloudflare secret, never in the repository or in replies, and it refuses public repositories as sync does.
+
+Follow [mcp-remote/DEPLOY.md](mcp-remote/DEPLOY.md) to set it up; it's written for someone who hasn't used Cloudflare before. Then paste its address into **Settings → Connect an AI app** for the claude.ai and ChatGPT steps.
+
 ## Offline and storage
 
 Slate uses IndexedDB for workspace records and attachment blobs, and a service worker to cache its complete application bundle. There are no remote fonts, CDNs, tracking scripts, or required servers in the note-taking workflow. Text extraction from digital PDFs and OCR of scans and photos also run locally.
@@ -279,11 +310,14 @@ The Windows release workflow installs and launches the actual installer output t
 - `server/ai/`: AI providers (one file each in `server/ai/providers/`), key storage and the `/api/ai` routes.
 - `src/AIChat.tsx`, `src/ai.ts`, `src/ai-catalog.ts`: the Ask AI panel, its client and the model picker.
 - `src/AISettings.tsx`, `src/ChatGPTUI.tsx`, `src/chatgpt.ts`: AI provider settings and the ChatGPT sign-in.
-- `src/note-tools.mjs`, `src/doc-markdown.mjs`: the note tools the AI uses, and pages as Markdown.
+- `src/note-tools.mjs`, `src/doc-markdown.mjs`: the note tools shared by Ask AI and MCP, and pages as Markdown.
+- `server/mcp/`: the MCP server (`core.mjs`, shared with the Worker) and the local `/mcp` endpoint; `server/vendor/mcp-sdk.mjs` is the official MCP SDK bundled by `npm run bundle:mcp`, so the launcher needs no `npm install`.
+- `desktop/mcp-bridge.mjs`, `src/ConnectAIApp.tsx`: hands MCP calls to the Slate window, and the Connect an AI app settings.
+- `mcp-remote/`: the hosted MCP server for Cloudflare Workers, with [DEPLOY.md](mcp-remote/DEPLOY.md).
 
 ## Current boundaries
 
-This version is a personal workspace. It has no real-time collaboration, a packaged Linux/macOS installer, encrypted storage, collection formulas/relations, handwriting recognition, semantic/vector search, or unattended AI execution. Windows has a desktop installer; the browser version can also be installed as a PWA. Sync needs a GitHub account and a private repository.
+This version is a personal workspace. It has no real-time collaboration, a packaged Linux/macOS installer, encrypted storage, collection formulas/relations, handwriting recognition, semantic/vector search, or unattended AI execution (AI apps act only when you ask them to, and only through the tools above). Windows has a desktop installer; the browser version can also be installed as a PWA. Sync needs a GitHub account and a private repository.
 
 Calendar is a date-grouped agenda view. Reviews use an SM-2 style spaced repetition schedule rather than a full Anki/FSRS engine. Teach me builds questions from your own notes; it doesn't write explanations of its own. Markdown import covers headings, basic formatting, lists, checklists, quotes, links, fenced code and `<details><summary>…</summary>…</details>` toggles (which is also how toggles are exported); more elaborate Markdown constructs are kept as text. Imported remote images are not fetched automatically.
 
