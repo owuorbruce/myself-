@@ -62,9 +62,16 @@ export async function send(label, url, init = {}, { timeout = 30000 } = {}) {
       "rate_limited", 429, wait,
     );
   }
-  if (res.status === 401 || res.status === 403)
-    throw new AIError(`${label} didn't accept the API key. Check it in Settings & backups → AI providers.`, "unauthorized", res.status);
   const detail = upstreamMessage(body);
+  if (res.status === 401 || res.status === 403) {
+    // Keep what the provider said (wrong key, region, unpaid account, model not enabled…),
+    // with anything that looks like a key masked.
+    const reason = detail.replace(/\b(sk|LTAI)[-_A-Za-z0-9*]{6,}/g, "$1-…");
+    throw new AIError(
+      `${label} didn't accept the API key.` + (reason ? ` ${label} said: "${reason}".` : "") + " Check it in Settings & backups → AI providers.",
+      "unauthorized", res.status,
+    );
+  }
   throw new AIError(`${label} couldn't complete the request (${res.status})${detail ? ": " + detail : "."}`, "upstream_error", res.status >= 500 ? 502 : 400);
 }
 

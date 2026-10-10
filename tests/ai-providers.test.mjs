@@ -178,6 +178,23 @@ test("Qwen streams tool calls whose later chunks have an empty id", async () => 
   assert.deepEqual(result.toolCalls, [{ id: "call_8f08", name: "get_page", arguments: { id: "p1" } }]);
 });
 
+test("a rejected Qwen key says why, which region it was sent to, and never echoes the key", async () => {
+  globalThis.fetch = async () => Response.json({ error: { message: "Incorrect API key provided: sk-abc123def456. ", type: "invalid_request_error", code: "invalid_api_key" } }, { status: 401 });
+  const account = { type: "qwen", apiKey: "sk-abc123def456", baseUrl: "https://dashscope-intl.aliyuncs.com/compatible-mode/v1" };
+  await assert.rejects(qwen.listModels(account, {}), (e) =>
+    e.code === "unauthorized" && /Incorrect API key/.test(e.message) && /International \(Singapore\)/.test(e.message) &&
+    /region they were created in/.test(e.message) && !e.message.includes("abc123def456"));
+  await assert.rejects(run(qwen, account), (e) => /International \(Singapore\)/.test(e.message));
+  await assert.rejects(qwen.listModels({ ...account, apiKey: "LTAI5tExample" }, {}), /AccessKey, not a Model Studio API key/);
+  assert.match(qwen.checkKey("LTAI5tExample"), /AccessKey ID/);
+  assert.equal(qwen.checkKey("sk-abc"), "");
+});
+
+test("a 403 keeps the provider's reason, since it often isn't the key itself", async () => {
+  globalThis.fetch = async () => Response.json({ code: "AccessDenied.Unpurchased", message: "Access to model denied. Please make sure you are eligible for using the model." }, { status: 403 });
+  await assert.rejects(run(mistral, { type: "mistral", apiKey: "k" }), (e) => e.status === 403 && /Access to model denied/.test(e.message));
+});
+
 test("rate limits are reported once with when to try again", async () => {
   let count = 0;
   globalThis.fetch = async () => { count++; return new Response(JSON.stringify({ message: "Too many" }), { status: 429, headers: { "retry-after": "42" } }); };
