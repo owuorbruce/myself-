@@ -5,6 +5,7 @@ import { generateHTML } from "@tiptap/core";
 import { extensions } from "./extensions";
 import { seed, type Workspace, type Page } from "./types";
 import { validateWorkspace } from "./validation.mjs";
+import { migrateWorkspace } from "./toggle.mjs";
 type Meta = { revision: number; split?: boolean; data: Workspace };
 type PageBody = { content: Page["content"]; plainText: string };
 const STORES = ["workspace", "pages", "versions", "attachText"] as const;
@@ -53,10 +54,13 @@ function metaOf(data: Workspace): Workspace {
     attachments: data.attachments.map((a) => ({ ...a, text: "" })),
   };
 }
-/** Fill in fields added in later versions so older data keeps working. */
+/**
+ * Fill in fields added in later versions so older data keeps working.
+ * Tap to Learn blocks become toggles; pages without them are left as they are.
+ */
 export function normalize(data: Workspace): Workspace {
   return {
-    ...data,
+    ...migrateWorkspace(data),
     study: data.study || { items: [], days: [] },
     settings: {
       ...data.settings,
@@ -106,7 +110,7 @@ export async function load(): Promise<{
     versionKeys.map((k, i) => [String(k), versionLists[i] as Page["versions"]]),
   );
   const text = new Map(textKeys.map((k, i) => [String(k), String(texts[i])]));
-  const data = normalize({
+  const stored: Workspace = {
     ...saved.data,
     pages: saved.data.pages.map((p) => ({
       ...p,
@@ -118,9 +122,16 @@ export async function load(): Promise<{
       ...a,
       text: text.get(a.id) || "",
     })),
-  });
-  remember(data);
-  return { revision: saved.revision, data, migrate: false };
+  };
+  const data = normalize(stored);
+  // Remember what is stored, so pages whose Tap to Learn blocks just became
+  // toggles are written back by the save that follows.
+  remember(stored);
+  return {
+    revision: saved.revision,
+    data,
+    migrate: data.pages.some((p, i) => p !== stored.pages[i]),
+  };
 }
 export async function save(data: Workspace, revision: number) {
   const tx = (await db).transaction([...STORES], "readwrite");
@@ -265,23 +276,21 @@ markdown.addRule("blank", {
   filter: (n) => (n as HTMLElement).hasAttribute?.("data-blank"),
   replacement: (_c, n) => `{{${(n as HTMLElement).getAttribute("data-answer")}}}`,
 });
-markdown.addRule("reveal", {
-  filter: (n) => (n as HTMLElement).hasAttribute?.("data-reveal"),
+/** Toggles export as <details>, which the Markdown importer reads back. */
+markdown.addRule("toggle", {
+  filter: (n) => n.nodeName === "DETAILS",
   replacement: (_c, node) => {
     const el = node as HTMLElement;
-    const question = el.querySelector("summary")?.textContent || "";
-    const answer = markdown
-      .turndown(el.querySelector("[data-answer]")?.innerHTML || "")
+    const summary = el.querySelector(":scope > summary")?.textContent || "";
+    const body = markdown
+      .turndown(el.querySelector(':scope > [data-type="detailsContent"]')?.innerHTML || "")
       .trim();
     return (
-      "\n\n**Q: " +
-      question +
-      "**\n\n" +
-      answer
-        .split("\n")
-        .map((l) => "> " + l)
-        .join("\n") +
-      "\n\n"
+      "\n\n<details>\n<summary>" +
+      summary.replace(/[<>&]/g, (c) => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;" })[c]!) +
+      "</summary>\n\n" +
+      body +
+      "\n\n</details>\n\n"
     );
   },
 });

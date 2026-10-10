@@ -2,14 +2,20 @@ import http from 'node:http';
 import { readFile, stat } from 'node:fs/promises';
 import path from 'node:path';
 import { createChatGPTRouter } from './chatgpt-router.mjs';
+import { createAIRouter } from './ai/router.mjs';
+import { createMcpRoute } from './mcp/local.mjs';
 
 const mime = { '.html':'text/html; charset=utf-8', '.js':'text/javascript', '.mjs':'text/javascript', '.css':'text/css', '.json':'application/json', '.webmanifest':'application/manifest+json', '.png':'image/png', '.svg':'image/svg+xml', '.woff2':'font/woff2', '.wasm':'application/wasm', '.gz':'application/gzip', '.txt':'text/plain' };
-export function createLocalServer({ root, runtime, contentSecurityPolicy } = {}) {
+export function createLocalServer({ root, runtime, accounts, mcp, version, contentSecurityPolicy } = {}) {
   root = path.resolve(root);
   const chatgpt = createChatGPTRouter({ runtime });
+  const ai = createAIRouter({ runtime, ...(accounts ? { accounts } : {}) });
+  const mcpRoute = createMcpRoute({ bridge: mcp, version });
   const server = http.createServer(async (req, res) => {
     try {
+      if (await mcpRoute(req, res)) return;
       if (await chatgpt(req, res)) return;
+      if (await ai(req, res)) return;
       if (!['GET', 'HEAD'].includes(req.method)) { res.writeHead(405); res.end(); return; }
       const url = new URL(req.url, 'http://localhost');
       let relative = decodeURIComponent(url.pathname).replace(/^\/+/, '');
@@ -38,6 +44,7 @@ export function createLocalServer({ root, runtime, contentSecurityPolicy } = {})
     },
     async close() {
       chatgpt.close();
+      ai.close();
       await new Promise((resolve) => { server.close(resolve); server.closeAllConnections(); });
     },
   };

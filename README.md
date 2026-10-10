@@ -2,7 +2,7 @@
 
 An offline personal workspace for notes, coursework, projects, tasks, and study cards, where your notes quiz you back.
 
-**Notes work offline without an account or subscription.** Optional ChatGPT sign-in in the local app uses eligible usage from your existing plan; no API key is required. The hosted app also includes a copy-and-paste workflow.
+**Notes work offline without an account or subscription.** In the desktop app, **Ask AI** lets you talk through your notes with Qwen (the default), Mistral, Gemini, Claude, ChatGPT (with your plan's sign-in), any OpenAI-compatible service, or a model running on your own computer with Ollama. The hosted app includes a copy-and-paste workflow.
 
 ![Slate workspace preview](preview.png)
 
@@ -19,7 +19,7 @@ Open the hosted app: https://owuorbruce.github.io/myself-/
 3. Run **Slate-Setup.exe**, then open **Slate** from your desktop or Start menu.
 4. Restore your backup in **Settings & backups**. The first-run banner explains this move.
 
-The installer includes its own runtime. Node.js, a command window and a browser address are not required. Notes stay in the app's own local profile; they are separate from Chrome/Edge website storage. Your saved local ChatGPT connection can be reused because credentials remain in the existing protected user directory. ChatGPT sign-in opens your normal browser and replies appear back in Slate.
+The installer includes its own runtime. Node.js, a command window and a browser address are not required. Notes stay in the app's own local profile; they are separate from Chrome/Edge website storage. Your saved ChatGPT connection and AI provider keys can be reused because they stay in the protected user directory (`~/.slate`). ChatGPT sign-in opens your normal browser and replies appear back in Slate.
 
 Closing the window saves pending workspace edits first. If saving fails, Slate asks you to return and export your work or explicitly close anyway. App updates preserve the workspace profile and refresh only application caches. Uninstalling does not intentionally delete your notes, but keep regular backups.
 
@@ -64,7 +64,7 @@ GitHub setup documentation: https://docs.github.com/en/pages/getting-started-wit
 | Navigation   | Search and command menu, page tabs, split view with two editors, outline, focus mode, backlinks                                              |
 | Collections  | Editable custom fields: text, number, date, checkbox, select, URL; table, board, calendar agenda, list, gallery; assignment tracker template |
 | Tasks        | Dedicated tasks with due dates, priority, and source pages; aggregated checklists from notes                                                 |
-| Interactive  | Tap to Learn questions, fill-in-the-blanks, label-the-image diagrams with green / amber / red feedback, right inside your notes                |
+| Interactive  | Toggles that open and close (and quiz you in Study), fill-in-the-blanks, label-the-image diagrams with green / amber / red feedback           |
 | Teach me     | Turns any page into small teach-then-quiz bites with hearts, XP, pop quizzes and retries of what you missed                                  |
 | Studying     | Daily 5-minute review, weak-spot tracking, study streak, spaced repetition for flashcards and quiz blocks, exam / definition markers          |
 | Files        | Local attachments, image insertion, PDF and image preview, text/PDF attachment search, offline OCR for scans and photos                      |
@@ -72,17 +72,19 @@ GitHub setup documentation: https://docs.github.com/en/pages/getting-started-wit
 | Recovery     | Automatic snapshots, manual snapshots, restore history, trash and restore pages, full ZIP backup and restore                                 |
 | Portability  | Notion export import, Markdown export and import (tables, `{{blanks}}`), structured JSON backup, attachment files included                   |
 | Appearance   | Match my device, light, dark, sepia (moon button in the top bar); sans serif or serif editor; wide layout                                     |
-| AI           | Local ChatGPT sign-in, streamed answers, follow-ups, save-as-note and flashcards; hosted copy/paste fallback                       |
+| AI           | Ask AI chat with Qwen, Mistral, Gemini, Claude, ChatGPT, OpenAI-compatible services and local Ollama models; proposed page edits with Apply / Undo; quizzes from your notes |
 | Offline      | Notes, search, collections, checklists, tasks, flashcards, existing attachments, and backups                                                 |
 
 ## Learn by doing
 
 Slate is built for people who'd rather tap than read a wall of text.
 
-- **Tap to Learn.** Type `/tap` (or press the 👁 toolbar button). Write a question, then the answer underneath. The answer stays hidden until you tap.
+- **Toggles.** Type `>` and a space at the start of a line, or `/toggle`, or press the ▸ toolbar button. Write a one-line summary, then anything underneath: text, lists, images, even other toggles. Click the arrow to open or close it. Each device remembers which toggles you left open. Quotes now start with `"` and a space, as in Notion.
+- **Toggles in Study.** A toggle with a summary and some text inside becomes a review question: the summary is the prompt and the content is the answer. You grade yourself in Study, not in the note. A toggle that only holds other toggles works like a section, and the toggles inside it become the questions.
+- **Older Tap to Learn blocks** turn into toggles automatically when a page loads, a backup is restored or synced notes arrive. The question becomes the summary, the answer becomes the content, and their review history carries over.
 - **Fill in the blank.** Select a word and press the blank button in the toolbar, or type `/blank`. Type your guess into the gap and press Enter. Green is right, amber is a near miss, red is wrong. Separate accepted answers with `|`, like `osteoclasts|osteoclast`.
 - **Label the image.** Type `/label` and pick a diagram or lab slide. Drag boxes over its labels and type each answer. Press **Done**, then fill in the boxes and press **Check**. **Retry mistakes** clears only the wrong ones.
-- **Teach me.** Press **Teach me** on any page. Slate splits it into sections (by heading) and small bites, quizzes you right after each bite, gives pop quizzes every few sections, and brings back what you miss. Your blanks, Tap to Learn questions, labelled images and **bold key terms** become the questions.
+- **Teach me.** Press **Teach me** on any page. Slate splits it into sections (by heading) and small bites, quizzes you right after each bite, gives pop quizzes every few sections, and brings back what you miss. Your blanks, toggles, labelled images and **bold key terms** become the questions.
 - **Study → Today.** A short daily review that puts your weak spots first, then anything due. Answer one question a day to keep your streak.
 - **Study → Weak spots.** Everything you've missed, worst first, with a button to practise just those.
 
@@ -112,13 +114,15 @@ Sync is optional and uses a private GitHub repository you own, so there is still
 
 Slate syncs when it opens, about 20 seconds after you edit, every 5 minutes, and when you switch away. The cloud button in the top bar syncs right away and shows the status. If the same page was edited on both devices before syncing, both versions are kept and the other one is named "(from other device)". Permanent deletions sync too.
 
+Update Slate on every device you sync before syncing toggles: older versions of Slate can't read them and stop syncing until they're updated.
+
 The token is stored only in that browser's device storage. It is never put in backups or in the synced copy. Slate refuses to sync to a public repository.
 
 ## Import from Notion
 
 In Notion, export with **Markdown & CSV** and **Include subpages** (Settings → Workspace → Export, or a page's ⋯ menu → Export). In Slate open **Settings & backups → Import a Notion export (.zip)**.
 
-Pages keep their nesting, images, tables, callouts, checklists and links between pages. Toggles become Tap to Learn questions (a toggle that holds other toggles becomes a section heading), and slides embedded as HTML files become images. Other files become attachments. Databases become Collections, and their row pages are imported as pages. Everything lands under a page called **Imported from Notion**. Files over 25 MB are skipped.
+Pages keep their nesting, images, tables, callouts, checklists and links between pages. Toggles stay toggles, including toggles inside toggles. A Notion toggle heading becomes a heading with its content underneath, so Teach me still splits the page into sections. Slides embedded as HTML files become images. Other files become attachments. Databases become Collections, and their row pages are imported as pages. Everything lands under a page called **Imported from Notion**. Files over 25 MB are skipped.
 
 ## Add pages from a Slate file
 
@@ -130,24 +134,70 @@ When you attach a photo or a scanned PDF, Slate reads the printed text on your d
 
 The text reader (about 11 MB) downloads the first time it's used, then works offline. **Download text reading for offline use** in Settings fetches it ahead of time. It reads English printed text; handwriting is hit and miss.
 
-## ChatGPT inside Slate — no API key
+## Ask AI
 
-The local launcher supports OpenAI's [Sign in with ChatGPT for open-source apps](https://developers.openai.com/siwc/token-sharing-open-source). Eligible ChatGPT Plus or Pro accounts can share their plan allowance or available credits with Slate. This preview depends on account eligibility, permissions and usage limits. Slate does not fall back to separately billed API usage.
+Open **✦ Ask AI** on any page (or select text first). Type in the box at the bottom: **Enter** sends, **Shift + Enter** starts a new line. The small **Sending:** line above the box shows exactly which notes go to the AI. Tap it to choose this page, this page and its subpages, the selected text, your exam-marked material, specific pages, or no notes. Pages you name in a message are added to it.
 
-1. If you use the hosted website, export your workspace in **Settings & backups** first.
-2. [Download Slate for Windows](https://github.com/owuorbruce/myself-/releases/latest/download/Slate-Setup.exe), run the installer and open **Slate**. The source archive launcher remains available on other platforms.
-3. Restore your exported workspace in **Settings & backups** if you are moving from the hosted or browser version.
-4. In **Settings & backups → ChatGPT in Slate**, or a note's **Ask ChatGPT** panel, choose **Continue with ChatGPT**. Sign in in your browser and allow Slate to use your ChatGPT plan.
-5. Return to Slate, choose an available model, select your notes or highlighted text, choose an action and press **Ask ChatGPT**.
-6. Read replies inside Slate, ask follow-up questions, copy the answer, save it as a new child note, or add generated flashcards after validation. Partial and failed replies cannot be saved through these controls.
+The picker inside the box lists every connected AI's models, grouped by provider (**Qwen › qwen-plus**, **Mistral › …**, **Qwen (local) › qwen3.5:4b**). Model lists come from each provider, with **Reload** if one fails. Slate remembers your last pick; switching mid-conversation keeps the conversation. New conversations start on **Qwen** until you pick something else.
 
-Keep Slate open. If using the source archive, keep its launcher open. AI replies need an internet connection; your normal note-taking features still work offline. The hosted GitHub Pages version provides these local setup steps and the existing **Use copy and paste instead** workflow. It cannot run the local sign-in helper itself.
+### Connect an AI
 
-Only pressing **Ask ChatGPT** or **Send follow-up** sends the selected prompt/history to OpenAI. Replies stay in the current panel until you choose to save them. Slate does not import your ChatGPT conversations or personal memory. Changing accounts clears the current answer and conversation.
+Open **Settings & backups → AI providers**:
 
-Access, refresh and verified identity tokens are kept by the local helper at `~/.slate/chatgpt/accounts.json`, outside the project and workspace backups. `SLATE_CHATGPT_DIR` can override the credential directory for an isolated local runtime. On Unix, the directory is restricted to its owner and the file has mode `0600`. Windows uses the local user's filesystem permissions. These credentials are not encrypted; do not share this file. Sign out attempts remote revocation and clears local tokens while retaining the account registration for future sign-in. If revocation cannot be confirmed, Slate tells you to disconnect it in ChatGPT settings. Manage plan access and limits in **ChatGPT Settings → Usage**.
+| Provider | What you need |
+| --- | --- |
+| **Qwen** (default) | An Alibaba Cloud Model Studio API key. Choose its region: International (Singapore) is the default, then US (Virginia), China (Beijing) and China (Hong Kong). Keys only work with their own region's address, and you can paste a workspace address (for example `https://<workspace>.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1`) instead. |
+| **Mistral**, **Gemini** (Google AI API), **Claude** (Anthropic API) | An API key from each provider. |
+| **ChatGPT** | Your ChatGPT plan through OpenAI's [Sign in with ChatGPT for open-source apps](https://developers.openai.com/siwc/token-sharing-open-source), unchanged: choose **Continue with ChatGPT** and allow plan usage. No API key; eligible Plus or Pro accounts only. |
+| **OpenAI-compatible** | A name, address and key. Presets: OpenRouter, Groq, Cerebras, GitHub Models and NVIDIA NIM. Add as many as you like. |
+| **Ollama** | Nothing: install [Ollama](https://ollama.com/download) and Slate finds it at `http://localhost:11434`. Run `ollama pull qwen3.5:4b` (or `qwen3.5:9b`) for **Qwen (local)**, the model Slate uses when you're offline. |
 
-Model choices come from the connected account. Usage-limit and eligibility failures appear in the answer panel, including failures that arrive after a reply starts. Your first real sign-in and response must be checked with your own account; automated tests use simulated OpenAI responses.
+Keys are kept by the Slate helper on your computer in `~/.slate/ai/providers.json` (or `SLATE_AI_DIR`), next to the ChatGPT sign-in in `~/.slate/chatgpt`, outside your workspace and backups, with the same owner-only permissions. They're never shown to the page again or sent anywhere except their own provider's address, and Slate refuses redirects. Each provider has one key; Slate never switches between keys to get around limits. The files aren't encrypted, so don't share them.
+
+### Working with your notes
+
+Models that can call tools can search and read the shared pages and propose changes: a new page, an addition to a page, a rewrite or a task. Each proposal appears in the chat as a preview (the new page, or before and after) with **Apply** and **Discard**. Nothing is written until you press **Apply**; a snapshot is kept first, and **Undo** puts things back (a page it created goes to Trash). Several proposals in one reply are applied or discarded one by one. There's no way for the AI to delete pages.
+
+Ask it to **quiz you** on a page, a folder or your exam-marked material: it asks one question at a time from those notes, then shows whether you were right, what was missing and the source page. At the end you get a score, and **Add to flashcards** puts any question you missed into Study's review schedule. **Save as new note**, **Copy** and **Add these flashcards** work the same with every provider.
+
+Models that can't call tools are marked **answers only** in the picker and simply answer. If a model refuses tools the first time, Slate remembers that on this device. **Settings → AI providers → Check tool calling** makes one tiny real request to test a model.
+
+### Limits and offline
+
+If a provider says you've hit its rate limit, Slate shows when to try again and keeps your message in the box. It doesn't retry by itself. Offline, the picker shows only models on this computer and says that online AIs need internet; if no local model is set up, sending is turned off. Everything else in Slate keeps working offline.
+
+AI needs the desktop app or the source launcher, which run the local helper. The hosted GitHub Pages version offers **Copy prompt** instead. Only what you send (your message, the conversation so far and the notes on the **Sending** line) goes to the provider you picked. Slate does not import your provider-side conversations or memory.
+
+## Connect an AI app (MCP)
+
+Like Notion's MCP server, Slate can let Claude, ChatGPT and other AI apps work with your notes. They get the same tools as Ask AI:
+
+| Tool | What it does |
+| --- | --- |
+| `search_pages(query)` | Matching pages with id, title, path and a snippet |
+| `list_pages(parent_id?)` | The page tree, a level at a time |
+| `get_page(id)` | Title and content as Markdown (toggles as `<details>`) |
+| `create_page(title, markdown, parent_id?)` | A new page, using Slate's Markdown importer |
+| `update_page(id, markdown, mode)` | `append` to a page or `replace` it; the previous version stays in Page history |
+| `list_tasks(status?)`, `create_task(title, due?, page_id?)` | Tasks |
+| `list_flashcards(page_id?)` | Study flashcards |
+
+There are no delete tools. It's off by default: turn it on in **Settings & backups → Connect an AI app**.
+
+### On this computer: Claude Desktop and Claude Code
+
+The Slate desktop app serves MCP at `http://127.0.0.1:4173/mcp` while it's open. It answers only apps on this computer that send the access token shown in Settings (Regenerate makes a new one), and refuses web pages: requests with a browser `Origin`, or for any host name other than `127.0.0.1`/`localhost`, are rejected. Calls run inside the Slate window through the same save queue, snapshots and sync bookkeeping as the editor, so a change an AI app makes is saved, synced and undoable like your own. If Slate isn't open, apps can't connect; if it's still loading, they're told to open Slate first.
+
+- **Claude Code:** `claude mcp add --transport http slate http://127.0.0.1:4173/mcp --header "Authorization: Bearer <token>"` (Settings shows it with your token filled in).
+- **Claude Desktop:** Settings shows a `claude_desktop_config.json` entry that uses `mcp-remote` (needs Node.js). Paste it under **Settings → Developer → Edit Config** and restart Claude Desktop.
+
+Settings lists the recent calls on this computer: tool names and times only, never content.
+
+### From anywhere: claude.ai, ChatGPT developer mode and phones
+
+These apps can only reach a public HTTPS server with OAuth sign-in. `mcp-remote/` is a small Cloudflare Worker that works with your **private sync repository** through the GitHub API, in exactly the format Slate syncs, so its changes arrive on your next sync. When Slate syncs at the same moment, it combines the two with Slate's own sync merge, so a page changed in both places keeps both versions. It supports OAuth 2.1 with dynamic client registration (what claude.ai and ChatGPT expect), and only your GitHub account can sign in. Its GitHub token is a Cloudflare secret, never in the repository or in replies, and it refuses public repositories as sync does.
+
+Follow [mcp-remote/DEPLOY.md](mcp-remote/DEPLOY.md) to set it up; it's written for someone who hasn't used Cloudflare before. Then paste its address into **Settings → Connect an AI app** for the claude.ai and ChatGPT steps.
 
 ## Offline and storage
 
@@ -237,7 +287,8 @@ The Windows release workflow installs and launches the actual installer output t
 
 - `src/App.tsx`: workspace UI, page navigation, tasks, study, backups, save queue.
 - `src/Editor.tsx`: Tiptap editor and slash commands.
-- `src/blocks.tsx`: Tap to Learn, fill-in-the-blank and label-the-image editor blocks.
+- `src/blocks.tsx`, `src/toggle-view.ts`: toggle, fill-in-the-blank and label-the-image editor blocks.
+- `src/toggle.mjs`: toggle helpers for Study and the conversion of older Tap to Learn blocks.
 - `src/Learn.tsx`, `src/lesson.ts`: Teach-me mode and the review session.
 - `src/study.ts`, `src/grading.mjs`: answer grading, spaced repetition, weak spots and streaks.
 - `src/sync.ts`, `src/sync-merge.mjs`: GitHub sync and merging between devices.
@@ -254,15 +305,21 @@ The Windows release workflow installs and launches the actual installer output t
 - `.github/workflows/desktop.yml`: Windows build, installed-app checks and verified release download.
 - `desktop/`: Electron main process, restricted preload bridge, sign-in handoff and package checks.
 - `electron-builder.config.cjs`: bundled runtime and per-user Windows installer.
-- `run-slate.mjs`: dependency-free localhost launcher for the prebuilt app and ChatGPT helper.
+- `run-slate.mjs`: dependency-free localhost launcher for the prebuilt app and the AI helper.
 - `server/chatgpt-auth.mjs`, `server/chatgpt-router.mjs`: local OAuth, credential storage, model catalog and response streaming.
-- `src/ChatGPTUI.tsx`, `src/chatgpt.ts`: ChatGPT settings, sign-in and answer panel.
+- `server/ai/`: AI providers (one file each in `server/ai/providers/`), key storage and the `/api/ai` routes.
+- `src/AIChat.tsx`, `src/ai.ts`, `src/ai-catalog.ts`: the Ask AI panel, its client and the model picker.
+- `src/AISettings.tsx`, `src/ChatGPTUI.tsx`, `src/chatgpt.ts`: AI provider settings and the ChatGPT sign-in.
+- `src/note-tools.mjs`, `src/doc-markdown.mjs`: the note tools shared by Ask AI and MCP, and pages as Markdown.
+- `server/mcp/`: the MCP server (`core.mjs`, shared with the Worker) and the local `/mcp` endpoint; `server/vendor/mcp-sdk.mjs` is the official MCP SDK bundled by `npm run bundle:mcp`, so the launcher needs no `npm install`.
+- `desktop/mcp-bridge.mjs`, `src/ConnectAIApp.tsx`: hands MCP calls to the Slate window, and the Connect an AI app settings.
+- `mcp-remote/`: the hosted MCP server for Cloudflare Workers, with [DEPLOY.md](mcp-remote/DEPLOY.md).
 
 ## Current boundaries
 
-This version is a personal workspace. It has no real-time collaboration, a packaged Linux/macOS installer, encrypted storage, collection formulas/relations, handwriting recognition, semantic/vector search, or unattended AI execution. Windows has a desktop installer; the browser version can also be installed as a PWA. Sync needs a GitHub account and a private repository.
+This version is a personal workspace. It has no real-time collaboration, a packaged Linux/macOS installer, encrypted storage, collection formulas/relations, handwriting recognition, semantic/vector search, or unattended AI execution (AI apps act only when you ask them to, and only through the tools above). Windows has a desktop installer; the browser version can also be installed as a PWA. Sync needs a GitHub account and a private repository.
 
-Calendar is a date-grouped agenda view. Reviews use an SM-2 style spaced repetition schedule rather than a full Anki/FSRS engine. Teach me builds questions from your own notes; it doesn't write explanations of its own. Markdown import covers headings, basic formatting, lists, checklists, quotes, links, and fenced code; more elaborate Markdown constructs are kept as text. Imported remote images are not fetched automatically.
+Calendar is a date-grouped agenda view. Reviews use an SM-2 style spaced repetition schedule rather than a full Anki/FSRS engine. Teach me builds questions from your own notes; it doesn't write explanations of its own. Markdown import covers headings, basic formatting, lists, checklists, quotes, links, fenced code and `<details><summary>…</summary>…</details>` toggles (which is also how toggles are exported); more elaborate Markdown constructs are kept as text. Imported remote images are not fetched automatically.
 
 Attachment limit: 25 MB each. Inline image limit: under 5 MB. PDF indexing: up to 300 pages and 1 million text characters; larger PDFs remain attached without full indexing. Backup restore: under 200 MB compressed and total attachment bytes. Structured backup text is limited to 30 MB. These are client-side guardrails, not paid credits.
 

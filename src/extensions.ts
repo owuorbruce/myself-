@@ -1,4 +1,4 @@
-import { Node, mergeAttributes } from "@tiptap/core";
+import { Node, mergeAttributes, wrappingInputRule } from "@tiptap/core";
 import type { DOMOutputSpec } from "@tiptap/pm/model";
 import StarterKit from "@tiptap/starter-kit";
 import TaskList from "@tiptap/extension-task-list";
@@ -6,6 +6,8 @@ import TaskItem from "@tiptap/extension-task-item";
 import { TableKit } from "@tiptap/extension-table";
 import Highlight from "@tiptap/extension-highlight";
 import Image from "@tiptap/extension-image";
+import Blockquote from "@tiptap/extension-blockquote";
+import { Details, DetailsContent, DetailsSummary } from "@tiptap/extension-details";
 export const Callout = Node.create({
   name: "callout",
   group: "block",
@@ -58,38 +60,28 @@ export const PageLink = Node.create({
     ];
   },
 });
-/** "Tap to Learn": a question whose answer stays hidden until tapped. */
-export const Reveal = Node.create({
-  name: "reveal",
-  group: "block",
-  content: "block+",
-  defining: true,
-  isolating: true,
+/**
+ * Toggle: a one-line summary with content that collapses underneath, like
+ * Notion's. Built on TipTap's details nodes; `id` keys its Study history.
+ * Whether a toggle is open is kept per device, not in the note.
+ */
+export const Toggle = Details.extend({
   addAttributes() {
     return {
-      id: { default: "", rendered: false },
-      question: { default: "", rendered: false },
+      id: {
+        default: "",
+        parseHTML: (el) => el.getAttribute("data-id") || "",
+        renderHTML: (attrs) => (attrs.id ? { "data-id": attrs.id } : {}),
+      },
     };
   },
-  parseHTML() {
-    return [
-      {
-        tag: "details[data-reveal]",
-        contentElement: "div[data-answer]",
-        getAttrs: (el) => ({
-          id: el.getAttribute("data-id") || "",
-          question: el.querySelector("summary")?.textContent || "",
-        }),
-      },
-    ];
-  },
-  renderHTML({ node }) {
-    return [
-      "details",
-      { "data-reveal": "", "data-id": node.attrs.id, class: "reveal-static" },
-      ["summary", {}, node.attrs.question || "Question"],
-      ["div", { "data-answer": "" }, 0],
-    ];
+});
+export const ToggleSummary = DetailsSummary;
+export const ToggleContent = DetailsContent;
+/** Quotes start with `" ` (as in Notion), so `> ` can make a toggle. */
+export const Quote = Blockquote.extend({
+  addInputRules() {
+    return [wrappingInputRule({ find: /^\s*"\s$/, type: this.type })];
   },
 });
 /** Fill-in-the-blank: an inline gap with an accepted answer ("a|b"). */
@@ -202,7 +194,9 @@ export const LabelImage = Node.create({
 export const extensions = [
   StarterKit.configure({
     link: { openOnClick: false, protocols: ["http", "https", "mailto"] },
+    blockquote: false,
   }),
+  Quote,
   TaskList,
   TaskItem.configure({ nested: true }),
   TableKit.configure({ table: { resizable: true } }),
@@ -210,7 +204,9 @@ export const extensions = [
   Image.configure({ allowBase64: true }),
   Callout,
   PageLink,
-  Reveal,
+  Toggle,
+  ToggleSummary,
+  ToggleContent,
   Blank,
   LabelImage,
 ];

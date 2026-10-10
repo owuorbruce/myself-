@@ -391,8 +391,8 @@ export function LearnView({
           <h2>Nothing to teach yet.</h2>
           <p>
             Write some notes on this page first. Headings split them into
-            sections, and <b>bold key terms</b>, blanks and Tap to Learn
-            questions become quiz questions.
+            sections, and <b>bold key terms</b>, blanks and toggles become
+            quiz questions.
           </p>
           <button className="primary" onClick={onEdit}>
             Back to the page

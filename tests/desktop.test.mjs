@@ -30,7 +30,8 @@ async function preloadHarness(){
  return {bridge,listeners,sent,invoked,events};
 }
 test('preload exposes narrow operations and reports save completion before closing',async()=>{
- const h=await preloadHarness();assert.deepEqual(Object.keys(h.bridge).sort(),['onBeforeClose','openSignIn']);
+ const h=await preloadHarness();assert.deepEqual(Object.keys(h.bridge).sort(),['mcp','onBeforeClose','openSignIn']);
+ assert.deepEqual(Object.keys(h.bridge.mcp).sort(),['config','onCall','regenerate','set']);
  await h.bridge.openSignIn('local ticket URL');assert.deepEqual(h.invoked,[['slate:sign-in','local ticket URL']]);
  let saved=false;const stop=h.bridge.onBeforeClose(async()=>{await Promise.resolve();saved=true;return true;});
  await h.listeners.get('slate:request-close')();assert.equal(saved,true);assert.deepEqual(h.sent.pop(),['slate:close-ready',true]);
@@ -55,4 +56,13 @@ test('closing the desktop service aborts an in-flight answer',async(t)=>{
  const local=createLocalServer({root:directory,runtime});const origin=await local.listen(0);
  const session=await (await fetch(origin+'/api/chatgpt/session')).json();const answer=await fetch(origin+'/api/chatgpt/respond',{method:'POST',headers:{'Content-Type':'application/json','X-Slate-Token':session.requestToken},body:JSON.stringify({model:'test',input:[{role:'user',content:'note'}]})});
  await answer.body.getReader().read();await local.close();assert.equal(aborted,true);
+});
+test('preload passes AI-app tool calls to the page handler and returns results or errors',async()=>{
+ const h=await preloadHarness();const same=(a,b)=>assert.equal(JSON.stringify(a),JSON.stringify(b));
+ await h.listeners.get('slate:mcp-call')({}, {id:'a',name:'list_pages',args:{}});same(h.sent.pop(),['slate:mcp-result','a',{error:'Open Slate first: the Slate window is still loading.'}]);
+ h.bridge.mcp.onCall(async(name,args)=>({name,args}));same(h.sent.pop(),['slate:mcp-ready']);
+ await h.listeners.get('slate:mcp-call')({}, {id:'b',name:'get_page',args:{id:'p'}});same(h.sent.pop(),['slate:mcp-result','b',{value:{name:'get_page',args:{id:'p'}}}]);
+ h.bridge.mcp.onCall(async()=>{throw Error('No page');});h.sent.pop();
+ await h.listeners.get('slate:mcp-call')({}, {id:'c',name:'get_page',args:{}});same(h.sent.pop(),['slate:mcp-result','c',{error:'No page'}]);
+ await h.bridge.mcp.set({enabled:true,remoteUrl:'https://x.test',extra:'dropped'});same(h.invoked.pop(),['slate:mcp-set',{enabled:true,remoteUrl:'https://x.test'}]);
 });

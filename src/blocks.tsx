@@ -1,12 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 import {
-  NodeViewContent,
   NodeViewWrapper,
   ReactNodeViewRenderer,
   type NodeViewProps,
 } from "@tiptap/react";
-import { Check, Eye, EyeOff, Pencil, RotateCcw, Tag, X } from "lucide-react";
-import { Reveal, Blank, LabelImage } from "./extensions";
+import { Check, Eye, EyeOff, Pencil, RotateCcw, Tag } from "lucide-react";
+import { Blank, LabelImage } from "./extensions";
+import { EditorToggle, EditorToggleContent } from "./toggle-view";
 import { gradeRating, grade } from "./grading.mjs";
 import { uid } from "./types";
 import type { Attempt, LabelBox } from "./study";
@@ -31,83 +31,6 @@ function useStableId(props: NodeViewProps) {
     if (!props.node.attrs.id) props.updateAttributes({ id: uid() });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-}
-
-function RevealView(props: NodeViewProps) {
-  const { node, updateAttributes } = props;
-  useStableId(props);
-  const [open, setOpen] = useState(!node.attrs.question);
-  const [marked, setMarked] = useState<"" | "got" | "missed">("");
-  const mark = (got: boolean, el: Element) => {
-    setMarked(got ? "got" : "missed");
-    report(el, {
-      id: "reveal:" + node.attrs.id,
-      kind: "reveal",
-      prompt: node.attrs.question,
-      answer: node.textContent,
-      ref: { node: node.attrs.id },
-      rating: got ? 2 : 0,
-    });
-  };
-  return (
-    <NodeViewWrapper
-      className={"reveal-block " + (open ? "open " : "") + marked}
-    >
-      <div className="reveal-head" contentEditable={false}>
-        <span className="reveal-badge">
-          <Eye size={14} /> Tap to learn
-        </span>
-        <input
-          className="reveal-question"
-          aria-label="Question"
-          value={node.attrs.question}
-          placeholder="Type a question, then write the answer below…"
-          onChange={(e) => updateAttributes({ question: e.target.value })}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") {
-              e.preventDefault();
-              setOpen(true);
-            }
-          }}
-        />
-        <button
-          className="reveal-toggle"
-          onClick={() => {
-            setOpen((o) => !o);
-            setMarked("");
-          }}
-        >
-          {open ? <EyeOff size={15} /> : <Eye size={15} />}
-          {open ? "Hide" : "Tap to reveal"}
-        </button>
-      </div>
-      <NodeViewContent
-        className="reveal-answer"
-        style={open ? undefined : { display: "none" }}
-      />
-      {open && node.attrs.question && (
-        <div className="reveal-grade" contentEditable={false}>
-          {marked ? (
-            <span>
-              {marked === "got"
-                ? "Nice. It will come back later to keep it fresh."
-                : "Saved to your weak spots. It'll come back soon."}
-            </span>
-          ) : (
-            <>
-              <span>Did you know it?</span>
-              <button onClick={(e) => mark(true, e.currentTarget)}>
-                <Check size={14} /> Got it
-              </button>
-              <button onClick={(e) => mark(false, e.currentTarget)}>
-                <X size={14} /> Not yet
-              </button>
-            </>
-          )}
-        </div>
-      )}
-    </NodeViewWrapper>
-  );
 }
 
 function BlankView(props: NodeViewProps) {
@@ -275,7 +198,7 @@ function LabelImageView(props: NodeViewProps) {
       contentEditable={false}
     >
       <div className="label-toolbar">
-        <span className="reveal-badge">
+        <span className="block-badge">
           <Tag size={14} /> Label the image
         </span>
         {editing ? (
@@ -448,11 +371,8 @@ function LabelImageView(props: NodeViewProps) {
 }
 
 export const interactiveExtensions = [
-  Reveal.extend({
-    addNodeView() {
-      return ReactNodeViewRenderer(RevealView, { stopEvent: fromControl });
-    },
-  }),
+  EditorToggle,
+  EditorToggleContent,
   Blank.extend({
     addNodeView() {
       return ReactNodeViewRenderer(BlankView, {

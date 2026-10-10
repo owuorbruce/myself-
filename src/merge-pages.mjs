@@ -35,7 +35,7 @@ export function mergePages(current, incoming, newId, now = Date.now()) {
     walk(content, (n) => {
       if (n.type === "pageLink" && n.attrs?.id)
         return { ...n, attrs: { ...n.attrs, id: id(n.attrs.id) } };
-      if (["reveal", "blank", "labelImage"].includes(n.type))
+      if (["reveal", "details", "blank", "labelImage"].includes(n.type))
         return { ...n, attrs: { ...n.attrs, id: newId() } };
       return n;
     });

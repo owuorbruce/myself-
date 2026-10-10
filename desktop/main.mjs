@@ -11,9 +11,10 @@ if (smokeMode) {
   if (!smokeDir || !['write', 'read'].includes(smokeMode)) throw Error('Smoke checks require an isolated profile.');
   app.setPath('userData', path.join(smokeDir, 'profile'));
   process.env.SLATE_CHATGPT_DIR = path.join(smokeDir, 'auth');
+  process.env.SLATE_AI_DIR = path.join(smokeDir, 'ai');
 }
 const firstInstance = app.requestSingleInstanceLock();
-let window, local, runtime, assetRoot, closeReady = false, closing = false, closeTimer, smokeSignIn = false;
+let window, local, runtime, assetRoot, mcp, closeReady = false, closing = false, closeTimer, smokeSignIn = false;
 const trusted = (event) => window && event.sender === window.webContents &&
   event.senderFrame === window.webContents.mainFrame && isAppPage(event.senderFrame.url);
 async function report(ok, details = '') {
@@ -48,7 +49,9 @@ function createWindow() {
     closing = true; window.webContents.send('slate:request-close');
     closeTimer = setTimeout(() => void closeDecision("Slate hasn't finished saving. Return to the app to save or export your work."), 10000);
   });
-  window.on('closed', () => { clearTimeout(closeTimer); window = undefined; });
+  window.on('closed', () => { clearTimeout(closeTimer); mcp?.setReady(false); window = undefined; });
+  // A reload drops the page's MCP handler until it registers again.
+  window.webContents.on('did-start-loading', () => mcp?.setReady(false));
   window.once('ready-to-show', () => { if (!smokeMode) window.show(); });
   return window.loadURL(DESKTOP_ORIGIN + '/');
 }
@@ -67,6 +70,14 @@ ipcMain.on('slate:close-ready', async (event, saved) => {
   if (smokeMode) await report(true, 'Desktop loaded; isolated renderer and local helper verified; close save completed.');
   window.close();
 });
+// Connect an AI app (local MCP). Only Slate's own page may use these.
+ipcMain.handle('slate:mcp-config', (event) => { if (!trusted(event)) throw Error('Not allowed.'); return mcp.config(); });
+ipcMain.handle('slate:mcp-set', (event, patch) => { if (!trusted(event) || !patch || typeof patch !== 'object') throw Error('Not allowed.'); return mcp.set(patch); });
+ipcMain.handle('slate:mcp-regenerate', (event) => { if (!trusted(event)) throw Error('Not allowed.'); return mcp.regenerate(); });
+ipcMain.on('slate:mcp-ready', (event) => { if (trusted(event)) mcp?.setReady(true); });
+ipcMain.on('slate:mcp-result', (event, id, outcome) => {
+  if (trusted(event) && typeof id === 'string' && outcome && typeof outcome === 'object') mcp?.result(id, outcome);
+});
 app.on('second-instance', () => { if (window) { if (window.isMinimized()) window.restore(); window.show(); window.focus(); } });
 app.on('window-all-closed', () => app.quit());
 app.on('will-quit', () => { void local?.close(); });
@@ -78,7 +89,10 @@ else void app.whenReady().then(async () => {
   const { ChatGPTRuntime } = await import(pathToFileURL(path.join(source, 'server', 'chatgpt-auth.mjs')).href);
   assetRoot = source;
   runtime = new ChatGPTRuntime();
-  local = createLocalServer({ root: path.join(source, 'dist'), runtime, contentSecurityPolicy: DESKTOP_CSP });
+  const { createMcpBridge } = await import('./mcp-bridge.mjs');
+  mcp = createMcpBridge({ folder: app.getPath('userData'), send: (request) => window?.webContents.send('slate:mcp-call', request) });
+  local = createLocalServer({ root: path.join(source, 'dist'), runtime, contentSecurityPolicy: DESKTOP_CSP, version: app.getVersion(),
+    mcp: { config: () => mcp.config(), call: (name, args) => mcp.call(name, args), record: (name) => mcp.record(name) } });
   await local.listen(4173);
   // Application files are bundled and work offline; keep workspace IndexedDB intact.
   await session.defaultSession.clearStorageData({ storages: ['serviceworkers', 'cachestorage'] });

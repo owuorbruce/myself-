@@ -119,7 +119,7 @@ export const plain = (doc: JSONContent): string =>
                   .join(", ")
               : n.text || plain(n),
     )
-    .join(doc.type === "paragraph" || doc.type === "heading" ? "" : "\n");
+    .join(doc.type === "paragraph" || doc.type === "heading" || doc.type === "detailsSummary" ? "" : "\n");
 export const newPage = (
   title = "Untitled",
   parentId: string | null = null,
@@ -178,18 +178,18 @@ export function examplePage(parentId: string | null = null): Page {
         t("."),
       ),
       {
-        type: "reveal",
-        attrs: {
-          id: uid(),
-          question: "Which hormone raises blood calcium by activating osteoclasts?",
-        },
-        content: [para(t("Parathyroid hormone (PTH), from the parathyroid glands."))],
+        type: "details",
+        attrs: { id: uid() },
+        content: [
+          { type: "detailsSummary", content: [t("Which hormone raises blood calcium by activating osteoclasts?")] },
+          { type: "detailsContent", content: [para(t("Parathyroid hormone (PTH), from the parathyroid glands."))] },
+        ],
       },
       h2("Make your own"),
       {
         type: "bulletList",
         content: [
-          "Type / and pick Tap to Learn, Fill in the blank, or Label an image.",
+          "Type / and pick Toggle, Fill in the blank, or Label an image. Type > and a space to start a toggle.",
           "Select a word and press the blank button in the toolbar to turn it into a gap.",
           "Label an image: drop in a lab slide, drag boxes over its labels, and quiz yourself.",
           "Bold your key terms. Teach me turns them into questions for you.",
@@ -246,7 +246,7 @@ export function seed(): Workspace {
           "Type / in the editor for headings, checklists, tables, quizzes, and exam markers.",
           "Open “Interactive notes: example” in School and press Teach me.",
           "Link pages, attach readings, and turn key concepts into flashcards.",
-          "Use Ask ChatGPT to copy a prompt with your notes into ChatGPT.",
+          "Use Ask AI to talk through your notes with the AI you choose.",
         ].map((text) => ({
           type: "listItem",
           content: [{ type: "paragraph", content: [{ type: "text", text }] }],

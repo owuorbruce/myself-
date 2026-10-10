@@ -150,9 +150,10 @@ export function parseMarkdown(text: string): JSONContent {
 
 /*
  * Toggles. Notion exports a toggle as a bullet whose children are indented
- * paragraphs (Markdown has no toggle), and some tools write <details>.
- * A toggle that holds other toggles becomes a section heading; a toggle
- * that holds an answer becomes a Tap to Learn block.
+ * paragraphs (Markdown has no toggle), and Slate and other tools write
+ * <details>. Toggles stay toggles, nested ones included. A Notion toggle
+ * heading ("# Title" as the toggle's title) becomes a heading followed by
+ * its content, so Teach me still finds its sections.
  */
 type Segment =
   | { kind: "text"; lines: string[] }
@@ -246,6 +247,9 @@ const cleanTitle = (s: string) =>
     .replace(/<[^>]+>/g, "")
     .replace(/\*\*|__|`/g, "")
     .replace(/^#+\s*/, "")
+    .replace(/&(lt|gt|quot|#39|amp);/g, (_m, e: string) =>
+      ({ lt: "<", gt: ">", quot: '"', "#39": "'", amp: "&" })[e]!,
+    )
     .trim();
 
 function convert(list: Segment[], depth: number): JSONContent[] {
@@ -260,27 +264,31 @@ function convert(list: Segment[], depth: number): JSONContent[] {
       );
       continue;
     }
-    const title = cleanTitle(s.title) || "Question";
-    if (s.children.some((c) => c.kind === "toggle")) {
+    const title = cleanTitle(s.title);
+    const heading = s.title.replace(/<[^>]+>/g, "").match(/^\s*(#{1,6})\s/);
+    if (heading && title) {
       nodes.push({
         type: "heading",
-        attrs: { level: Math.min(3, 2 + depth) },
+        attrs: { level: Math.min(3, Math.max(heading[1].length, 1 + depth)) },
         content: [{ type: "text", text: title }],
       });
       nodes.push(...convert(s.children, depth + 1));
     } else {
-      const answer = convert(s.children, depth + 1);
+      const body = convert(s.children, depth + 1);
       nodes.push({
-        type: "reveal",
-        attrs: { id: uid(), question: title },
-        content: answer.length ? answer : [{ type: "paragraph" }],
+        type: "details",
+        attrs: { id: uid() },
+        content: [
+          { type: "detailsSummary", ...(title ? { content: [{ type: "text", text: title }] } : {}) },
+          { type: "detailsContent", content: body.length ? body : [{ type: "paragraph" }] },
+        ],
       });
     }
   }
   return nodes;
 }
 
-/** Markdown with toggles turned into sections and Tap to Learn blocks. */
+/** Markdown with toggles, including <details> blocks and Notion's indented toggles. */
 export function parseRich(text: string): JSONContent {
   const lines = text
     .replace(/\r\n/g, "\n")
